@@ -37,25 +37,38 @@
     <script>
         // --- CONFIGURATION ---
         const FEED_URL = 'feed.json';
-        const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE'; // <--- PASTE YOUR SCRIPT URL HERE
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd-xD0xTYGNsyflEBFpHXD8nbkI6RKAFJ1WMKgUGOiy4DTNVEElxiuUIwT6RM_meZrtg/exec'; // <--- PASTE YOUR SCRIPT URL HERE
 
-        // --- 1. MAGIC LINK AUTHENTICATION ---
-        // Checks URL for ?setup=YOUR_SECRET_KEY
-        const urlParams = new URLSearchParams(window.location.search);
-        const newKey = urlParams.get('setup');
+        // --- AUTHENTICATION LOGIC ---
         const statusDot = document.getElementById('status-indicator');
 
-        if (newKey) {
-            localStorage.setItem("admin_secret_key", newKey);
-            alert("✅ Admin Key Saved! You can now interact.");
-            // Clean URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-            statusDot.classList.replace('bg-gray-500', 'bg-green-500');
-        } else if (localStorage.getItem("admin_secret_key")) {
+        // Check if key exists on load
+        if (localStorage.getItem("admin_secret_key")) {
             statusDot.classList.replace('bg-gray-500', 'bg-green-500');
         }
 
-        // --- 2. FETCH AND RENDER FEED ---
+        // NEW: Manual Login Function (Double Tap Handler)
+        function manualLogin() {
+            const currentKey = localStorage.getItem("admin_secret_key");
+            const input = prompt("Enter Admin Key:", currentKey || "");
+
+            if (input) {
+                localStorage.setItem("admin_secret_key", input);
+                statusDot.classList.replace('bg-gray-500', 'bg-green-500');
+                alert("✅ Key Saved! You are logged in.");
+            }
+        }
+
+        // Keep Magic Link (Optional backup)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('setup')) {
+            localStorage.setItem("admin_secret_key", urlParams.get('setup'));
+            statusDot.classList.replace('bg-gray-500', 'bg-green-500');
+            // We delay clearing the URL slightly so you see it worked
+            setTimeout(() => {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }, 1000);
+        }
         // --- 2. FETCH AND RENDER FEED ---
         function loadFeed() {
             // Check if the data was loaded from feed.js
