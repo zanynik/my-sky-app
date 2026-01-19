@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        /* Hide scrollbar for cleaner mobile look */
+        body::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tap-highlight-transparent {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+    <script src="feed.js"></script>
+</head>
+
+<body class="bg-slate-900 text-slate-200 min-h-screen font-sans">
+
+    <div class="fixed top-0 w-full bg-slate-900/95 backdrop-blur border-b border-slate-700 z-50">
+        <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+            <h1 class="font-bold text-xl tracking-tight">Home</h1>
+            <div id="status-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+        </div>
+    </div>
+
+    <div id="feed-container" class="max-w-xl mx-auto pt-16 pb-20 px-0">
+        <div class="text-center mt-10 text-slate-500 animate-pulse">Loading feed...</div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const FEED_URL = 'feed.json';
+        const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE'; // <--- PASTE YOUR SCRIPT URL HERE
+
+        // --- 1. MAGIC LINK AUTHENTICATION ---
+        // Checks URL for ?setup=YOUR_SECRET_KEY
+        const urlParams = new URLSearchParams(window.location.search);
+        const newKey = urlParams.get('setup');
+        const statusDot = document.getElementById('status-indicator');
+
+        if (newKey) {
+            localStorage.setItem("admin_secret_key", newKey);
+            alert("✅ Admin Key Saved! You can now interact.");
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+            statusDot.classList.replace('bg-gray-500', 'bg-green-500');
+        } else if (localStorage.getItem("admin_secret_key")) {
+            statusDot.classList.replace('bg-gray-500', 'bg-green-500');
+        }
+
+        // --- 2. FETCH AND RENDER FEED ---
+        // --- 2. FETCH AND RENDER FEED ---
+        function loadFeed() {
+            // Check if the data was loaded from feed.js
+            if (window.FEED_DATA) {
+                renderPosts(window.FEED_DATA);
+            } else {
+                console.error("FEED_DATA not found. Ensure feed.js is loaded.");
+                document.getElementById('feed-container').innerHTML =
+                    `<div class="p-4 text-center text-red-400">Error loading feed. Data missing.</div>`;
+            }
+        }
+
+        function renderPosts(posts) {
+            const container = document.getElementById('feed-container');
+            container.innerHTML = ''; // Clear loading
+
+            posts.forEach(post => {
+                const html = `
+                <div class="border-b border-slate-800 p-4 hover:bg-slate-800/50 transition duration-200">
+                    <div class="flex gap-3">
+                        <img src="${post.author.avatar}" class="w-12 h-12 rounded-full bg-slate-700 object-cover flex-shrink-0">
+                        
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-baseline justify-between">
+                                <div class="flex items-center gap-1 overflow-hidden">
+                                    <span class="font-bold text-white truncate">${post.author.name}</span>
+                                    <span class="text-slate-500 text-sm truncate">${post.author.handle}</span>
+                                    <span class="text-slate-500 text-sm">· ${formatTime(post.timestamp)}</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-1 text-[15px] leading-normal text-slate-100 whitespace-pre-wrap">
+                                ${linkify(post.content)}
+                            </div>
+
+                            <div class="mt-3 flex items-center justify-between text-slate-500 max-w-xs">
+                                <button onclick="handleInteraction('reply', '${post.id}')" class="group flex items-center gap-1.5 hover:text-blue-400 tap-highlight-transparent">
+                                    <svg class="w-5 h-5 group-hover:bg-blue-500/10 rounded-full p-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                                    <span class="text-xs">${post.metrics.replies}</span>
+                                </button>
+
+                                <button onclick="handleInteraction('like', '${post.id}')" class="group flex items-center gap-1.5 hover:text-pink-500 tap-highlight-transparent">
+                                    <svg class="w-5 h-5 group-hover:bg-pink-500/10 rounded-full p-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                                    <span class="text-xs">${post.metrics.likes}</span>
+                                </button>
+                                
+                                <button class="hover:text-green-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        // --- 3. HANDLE INTERACTIONS ---
+        async function handleInteraction(type, postId) {
+            const secret = localStorage.getItem("admin_secret_key");
+
+            if (!secret) {
+                alert("🔒 Read-Only Mode.\n\nTo enable interactions, visit this URL with ?setup=YOUR_PASSWORD");
+                return;
+            }
+
+            let commentText = "";
+            if (type === 'reply') {
+                commentText = prompt("Write your reply:");
+                if (commentText === null) return; // Cancelled
+            }
+
+            // Visual feedback immediately
+            alert(`Sending ${type}...`);
+
+            // Prepare Payload
+            const payload = {
+                secret: secret,
+                type: type,
+                postId: postId,
+                comment: commentText
+            };
+
+            // Send to Google Script
+            try {
+                // Note: mode: 'no-cors' is often needed for Google Scripts to avoid browser errors, 
+                // but it means we can't read the specific success message.
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                alert("Saved to Drive! 💾");
+            } catch (error) {
+                alert("Error sending data.");
+                console.error(error);
+            }
+        }
+
+        // Utilities
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function linkify(text) {
+            // Simple regex to make links clickable and highlight hashtags
+            return text
+                .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" onclick="event.stopPropagation()">$1</a>')
+                .replace(/#(\w+)/g, '<span class="text-blue-400 font-medium">#$1</span>');
+        }
+
+        // Init
+        loadFeed();
+
+    </script>
+</body>
+
+</html>
