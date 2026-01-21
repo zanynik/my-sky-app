@@ -1,0 +1,39 @@
+{
+  "notes": [
+    {
+      "title": "Exclusion of Liked Tweets from NAND",
+      "content": "Liked Tweets should be excluded from the NAND system to avoid clutter and maintain the cleanliness of the knowledge base.",
+      "tags": ["design", "workflow", "NAND"]
+    },
+    {
+      "title": "Strategic Importance of NAND Vectors",
+      "content": "NAND file vectors are essential for both the feed algorithm and for iterating on the algorithm itself based on updated beliefs or contradictions.",
+      "tags": ["vectors", "algorithm", "NAND"]
+    },
+    {
+      "title": "Separation of Internal and External Feeds",
+      "content": "Internal atomic NAND notes should be structurally separated from external social posts (Bluesky, Nostr), with the internal feed taking priority.",
+      "tags": ["architecture", "feed", "prioritization"]
+    },
+    {
+      "title": "MVP Storage Strategy",
+      "content": "Use Git for primary data storage (feed.json) and LocalStorage for client-side state (hidden posts) initially; defer decentralized protocols like NOSTR Blossom until utility is proven.",
+      "tags": ["storage", "git", "mvp", "nostr"]
+    },
+    {
+      "title": "Consolidation of Repositories",
+      "content": "The Note-taking and Feed repositories should be combined to streamline the workflow.",
+      "tags": ["workflow", "git", "organization"]
+    },
+    {
+      "title": "AI's Role in Art and Creativity",
+      "content": "AI replaces the technical toil of art creation rather than the artist, effectively democratizing creativity and allowing human expression to explode.",
+      "tags": ["ai", "creativity", "philosophy"]
+    },
+    {
+      "title": "Human Value vs. AI",
+      "content": "Human value stems from biological, lived experience and connection; AI's role is to facilitate the expression and transmission of this organic life to others.",
+      "tags": ["philosophy", "humanity", "ai"]
+    }
+  ]
+}
