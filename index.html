@@ -36,12 +36,31 @@
 
     <script>
         // --- CONFIGURATION ---
-        // List of feed files to load. 
-        // In a real server environment, this could be dynamic, but for static hosting we list them.
-        const FEED_FILES = [
-            'feed/AI_Curator_feed.json',
-            'feed/News_Bot_feed.json'
-        ];
+        // Dynamically fetch feed files from the /feed/ directory
+        async function getFeedFiles() {
+            try {
+                const response = await fetch('feed/');
+                if (!response.ok) throw new Error('Failed to fetch feed directory');
+                const text = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                const links = Array.from(doc.querySelectorAll('a'));
+                const files = links
+                    .map(link => link.getAttribute('href'))
+                    .filter(href => href.endsWith('.json'))
+                    .map(filename => `feed/${filename}`);
+
+                if (files.length === 0) throw new Error('No JSON files found');
+                return files;
+            } catch (e) {
+                console.warn('Could not auto-discover feeds, using fallback.', e);
+                return [
+                    'feed/AI_Curator_feed.json',
+                    'feed/News_Bot_feed.json',
+                    'feed/NAND_Bot_feed.json'
+                ];
+            }
+        }
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd-xD0xTYGNsyflEBFpHXD8nbkI6RKAFJ1WMKgUGOiy4DTNVEElxiuUIwT6RM_meZrtg/exec'; // <--- PASTE YOUR SCRIPT URL HERE
 
         // --- AUTHENTICATION LOGIC ---
@@ -94,7 +113,7 @@
         async function loadFeed() {
             // Check for file protocol which blocks fetch
             if (window.location.protocol === 'file:') {
-                 document.getElementById('feed-container').innerHTML =
+                document.getElementById('feed-container').innerHTML =
                     `<div class="p-4 text-center text-red-400 border border-red-500 rounded m-4">
                         <h3 class="font-bold">⚠️ Local File Access Error</h3>
                         <p class="mt-2 text-sm text-slate-300">Browsers cannot "fetch" JSON files directly from the file system (file://) due to security rules ("CORS").</p>
@@ -105,7 +124,8 @@
             }
 
             try {
-                const feedPromises = FEED_FILES.map(async (file) => {
+                const feedFiles = await getFeedFiles();
+                const feedPromises = feedFiles.map(async (file) => {
                     const response = await fetch(file);
                     if (!response.ok) throw new Error(`Failed to load ${file}`);
                     const data = await response.json();
