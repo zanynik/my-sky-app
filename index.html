@@ -18,7 +18,7 @@
             -webkit-tap-highlight-color: transparent;
         }
     </style>
-    <script src="feed.js"></script>
+
 </head>
 
 <body class="bg-slate-900 text-slate-200 min-h-screen font-sans">
@@ -36,7 +36,12 @@
 
     <script>
         // --- CONFIGURATION ---
-        const FEED_URL = 'feed.json';
+        // List of feed files to load. 
+        // In a real server environment, this could be dynamic, but for static hosting we list them.
+        const FEED_FILES = [
+            'feed/AI_Curator_feed.json',
+            'feed/News_Bot_feed.json'
+        ];
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd-xD0xTYGNsyflEBFpHXD8nbkI6RKAFJ1WMKgUGOiy4DTNVEElxiuUIwT6RM_meZrtg/exec'; // <--- PASTE YOUR SCRIPT URL HERE
 
         // --- AUTHENTICATION LOGIC ---
@@ -86,24 +91,51 @@
             }, 1000);
         }
         // --- 2. FETCH AND RENDER FEED ---
-        function loadFeed() {
-            // Check if the data was loaded from feed.js
-            if (window.FEED_DATA) {
-                renderPosts(window.FEED_DATA);
-            } else {
-                fetch(FEED_URL)
-                    .then(response => response.json())
-                    .then(data => renderPosts(data))
-                    .catch(err => {
-                        console.error("Error loading feed:", err);
-                        // Fallback to window.FEED_DATA if fetch fails (e.g. local file system)
-                        if (window.FEED_DATA) {
-                            renderPosts(window.FEED_DATA);
-                        } else {
-                            document.getElementById('feed-container').innerHTML =
-                                `<div class="p-4 text-center text-red-400">Error loading feed.</div>`;
-                        }
+        async function loadFeed() {
+            // Check for file protocol which blocks fetch
+            if (window.location.protocol === 'file:') {
+                document.getElementById('feed-container').innerHTML =
+                    `<div class="p-4 text-center text-red-400 border border-red-500 rounded m-4">
+                        <h3 class="font-bold">⚠️ Local File Access Error</h3>
+                        <p class="mt-2 text-sm text-slate-300">Browsers cannot "fetch" JSON files directly from the file system (file://) due to security rules ("CORS").</p>
+                        <p class="mt-4 text-sm font-mono bg-slate-800 p-2 rounded">Run ./start_server.sh</p>
+                        <p class="mt-2 text-sm">Or use python -m http.server 8000</p>
+                    </div>`;
+                return;
+            }
+
+            try {
+                const feedPromises = FEED_FILES.map(async (file) => {
+                    const response = await fetch(file);
+                    if (!response.ok) throw new Error(`Failed to load ${file}`);
+                    const data = await response.json();
+
+                    // Extract name from filename: "feed/AI_Curator_feed.json" -> "AI_Curator" -> "AI Curator"
+                    const filename = file.split('/').pop(); // "AI_Curator_feed.json"
+                    const namePart = filename.replace('_feed.json', ''); // "AI_Curator"
+                    const authorName = namePart.replace(/_/g, ' '); // "AI Curator"
+
+                    // Inject author name into each post and return flattenable array
+                    return data.map(post => {
+                        if (!post.author) post.author = {};
+                        post.author.name = authorName;
+                        // Handle defaults just in case
+                        if (!post.author.handle) post.author.handle = "";
+                        return post;
                     });
+                });
+
+                const results = await Promise.all(feedPromises);
+                const allPosts = results.flat();
+
+                // Sort by timestamp descending
+                allPosts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                renderPosts(allPosts);
+            } catch (err) {
+                console.error("Error loading feeds:", err);
+                document.getElementById('feed-container').innerHTML =
+                    `<div class="p-4 text-center text-red-400">Error loading feed. <br><small class="text-slate-500">${err.message}</small></div>`;
             }
         }
 

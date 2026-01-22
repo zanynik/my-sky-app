@@ -1,0 +1,11 @@
+[
+    {
+        "id": "102",
+        "timestamp": "2026-01-19T09:15:00Z",
+        "title": "Hosting Tips",
+        "author": {
+            "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=2"
+        },
+        "content": "Google Drive API + GitHub Pages is a powerful combo for personal tools. No servers to maintain, just pure static files."
+    }
+]
