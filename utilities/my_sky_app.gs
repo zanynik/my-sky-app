@@ -2,77 +2,74 @@ function doPost(e) {
   // --- CONFIGURATION ---
   const MY_SECRET = "CHANGE_THIS_TO_YOUR_PASSWORD"; 
   
-  // You need TWO distinct folder IDs now
   const LIKES_FOLDER_ID = "1wuK_Kz8jr4CT3Vj6Gnt_cBFIiCq4GBuS"; 
   const COMMENTS_FOLDER_ID = "1oYAGMkVg4hTxJ-XqOv8OfDMI29pGR4jF";
 
-  // --- LOGIC ---
   try {
+    // 1. Parse Data
+    if (!e || !e.postData || !e.postData.contents) {
+      throw new Error("No post data received");
+    }
     const data = JSON.parse(e.postData.contents);
 
-    // 1. Security Check
+    // 2. Security Check
     if (data.secret !== MY_SECRET) {
       return ContentService.createTextOutput("Access Denied").setMimeType(ContentService.MimeType.TEXT);
     }
 
-    // 2. Select the correct folder
-    let targetFolderId;
-    if (data.type === 'like') {
-      targetFolderId = LIKES_FOLDER_ID;
-    } else if (data.type === 'reply') { // We use 'reply' for comments
-      targetFolderId = COMMENTS_FOLDER_ID;
-    } else {
-      // Fallback if something else comes in
-      targetFolderId = LIKES_FOLDER_ID; 
-    }
-    
-    const folder = DriveApp.getFolderById(targetFolderId);
-
-    // 3. Generate Content & Filename based on Type
-    let fileName, fileContent;
+    // 3. Determine Folder and Filename
+    let targetFolderId = LIKES_FOLDER_ID; // Default
+    let fileName = "Untitled.md";
+    let fileContent = "";
 
     if (data.type === 'reply') {
-      // --- REPLY FORMAT ---
-      // Filename: "FeedName_DDMMYYYY.md"
-      const safeFeedName = (data.feedName || "Untitled")
-        .replace(/[^a-zA-Z0-9_]/g, "") 
-        .substring(0, 50);             
+      targetFolderId = COMMENTS_FOLDER_ID;
       
-      const timestamp = new Date().toLocaleDateString("en-GB").replace(/\//g, ""); 
-      fileName = `${safeFeedName}_${timestamp}.md`;
+      // Filename: FeedName_DDMMYYYY.md
+      const rawFeedName = data.feedName ? String(data.feedName) : "Untitled";
+      const safeFeedName = rawFeedName.replace(/[^a-zA-Z0-9_]/g, "").substring(0, 50);
       
-      // Content: Just the comment
-      fileContent = data.comment || "";
+      // Robust Date Formatting
+      const tz = Session.getScriptTimeZone();
+      const dateStr = Utilities.formatDate(new Date(), tz, "ddMMyyyy");
+      
+      fileName = `${safeFeedName}_${dateStr}.md`;
+      fileContent = data.comment ? String(data.comment) : "";
 
     } else {
-      // --- LIKE FORMAT ---
-      // Filename: "PostTitle.md"
-      const safeTitle = (data.postTitle || "Untitled")
-        .replace(/[^a-zA-Z0-9_\s-]/g, "") // Allow spaces for title
-        .trim()
-        .substring(0, 50);
+      // Like (or anything else)
+      targetFolderId = LIKES_FOLDER_ID;
       
-      fileName = `${safeTitle}.md`;
+      // Filename: PostTitle.md
+      const rawTitle = data.postTitle ? String(data.postTitle) : "Untitled";
+      // Allow letters, numbers, spaces, underscores, dashes
+      const safeTitle = rawTitle.replace(/[^a-zA-Z0-9_\s-]/g, "").trim().substring(0, 50);
+      
+      fileName = (safeTitle || "Untitled") + ".md";
+      
+      // Tags handling
+      let tagsVal = "[]";
+      if (Array.isArray(data.tags)) {
+        tagsVal = JSON.stringify(data.tags);
+      }
 
-      // Content: Metadata + Post Content
-      // Empty fields for causes and effects as requested
-      const tagsString = Array.isArray(data.tags) ? JSON.stringify(data.tags) : "[]";
-      
-      fileContent = `---
-post_id: ${data.postId}
-tags: ${tagsString}
-causes: []
-effects: []
----
-${data.postContent}
-`;
+      fileContent = "---\n" +
+                    `post_id: ${data.postId || ""}\n` +
+                    `tags: ${tagsVal}\n` +
+                    "causes: []\n" +
+                    "effects: []\n" +
+                    "---\n" +
+                    (data.postContent || "");
     }
 
+    // 4. Save to Drive
+    const folder = DriveApp.getFolderById(targetFolderId);
     folder.createFile(fileName, fileContent);
 
     return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
 
   } catch (err) {
+    // Return error message (though client might not see it in no-cors)
     return ContentService.createTextOutput("Error: " + err.toString()).setMimeType(ContentService.MimeType.TEXT);
   }
 }
