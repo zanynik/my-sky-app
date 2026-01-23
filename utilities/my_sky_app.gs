@@ -28,25 +28,45 @@ function doPost(e) {
     
     const folder = DriveApp.getFolderById(targetFolderId);
 
-    // 3. Generate Filename: "FeedName_DDMMYYYY.md"
-    // We sanitize the feed name to ensure safe filename
-    const safeFeedName = (data.feedName || "Untitled")
-      .replace(/[^a-zA-Z0-9_]/g, "") // Keep alphanumeric and underscores
-      .substring(0, 50);             
-      
-    // Date format DDMMYYYY
-    const timestamp = new Date().toLocaleDateString("en-GB").replace(/\//g, ""); 
-    const fileName = `${safeFeedName}_${timestamp}.md`;
+    // 3. Generate Content & Filename based on Type
+    let fileName, fileContent;
 
-    // 4. Create Content
-    const fileContent = `---
+    if (data.type === 'reply') {
+      // --- REPLY FORMAT ---
+      // Filename: "FeedName_DDMMYYYY.md"
+      const safeFeedName = (data.feedName || "Untitled")
+        .replace(/[^a-zA-Z0-9_]/g, "") 
+        .substring(0, 50);             
+      
+      const timestamp = new Date().toLocaleDateString("en-GB").replace(/\//g, ""); 
+      fileName = `${safeFeedName}_${timestamp}.md`;
+      
+      // Content: Just the comment
+      fileContent = data.comment || "";
+
+    } else {
+      // --- LIKE FORMAT ---
+      // Filename: "PostTitle.md"
+      const safeTitle = (data.postTitle || "Untitled")
+        .replace(/[^a-zA-Z0-9_\s-]/g, "") // Allow spaces for title
+        .trim()
+        .substring(0, 50);
+      
+      fileName = `${safeTitle}.md`;
+
+      // Content: Metadata + Post Content
+      // Empty fields for causes and effects as requested
+      const tagsString = Array.isArray(data.tags) ? JSON.stringify(data.tags) : "[]";
+      
+      fileContent = `---
 post_id: ${data.postId}
-title: ${data.postTitle}
+tags: ${tagsString}
+causes: []
+effects: []
 ---
 ${data.postContent}
-
-${data.comment || ""}
 `;
+    }
 
     folder.createFile(fileName, fileContent);
 
