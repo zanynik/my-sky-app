@@ -64,7 +64,7 @@
                 ];
             }
         }
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby6l-s-LZjUqRDXBOWTa-9Pwk85BY39wb8iw_rylKbJvRuacjR9U9zhnIs89_fWmAo4Cw/exec'; // <--- PASTE YOUR SCRIPT URL HERE
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd-xD0xTYGNsyflEBFpHXD8nbkI6RKAFJ1WMKgUGOiy4DTNVEElxiuUIwT6RM_meZrtg/exec'; // <--- PASTE YOUR SCRIPT URL HERE
 
         // --- AUTHENTICATION LOGIC ---
         const statusDot = document.getElementById('status-indicator');
@@ -273,7 +273,7 @@
             // Visual feedback immediately
             alert(`Sending ${type}...`);
 
-            // Prepare Payload
+            // Prepared Payload
             const payload = {
                 secret: secret,
                 type: type,
@@ -285,6 +285,8 @@
                 tags: post.tags || []          // From Store
             };
 
+            console.log("🚀 Sending Payload:", payload); // Debugging
+
             // Send to Google Script
             try {
                 // Note: mode: 'no-cors' is often needed for Google Scripts to avoid browser errors, 
@@ -295,7 +297,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                alert("Saved to Drive! 💾");
+                console.log("✅ Request sent (result hidden by no-cors)");
+                alert("Saved to Drive! 💾\n(Check console for payload details)");
             } catch (error) {
                 alert("Error sending data.");
                 console.error(error);
