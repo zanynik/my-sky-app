@@ -3,314 +3,946 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>My Feed</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Note Recorder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        /* Hide scrollbar for cleaner mobile look */
-        body::-webkit-scrollbar {
-            display: none;
+        :root {
+            --primary-color: #6366f1;
+            --secondary-color: #a855f7;
+            --bg-color: #0f172a;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --text-color: #f8fafc;
+            --pulse-color: rgba(99, 102, 241, 0.5);
+            --chat-bubble-user: rgba(99, 102, 241, 0.3);
+            --input-bg: rgba(255, 255, 255, 0.1);
         }
 
-        .tap-highlight-transparent {
-            -webkit-tap-highlight-color: transparent;
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 40%);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 30px;
+            box-sizing: border-box;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 30px 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.3s ease;
+        }
+
+        h1 {
+            font-weight: 600;
+            font-size: 24px;
+            margin: 0;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.5px;
+        }
+
+        .status-text {
+            font-size: 14px;
+            color: #94a3b8;
+            height: auto;
+            min-height: 20px;
+            transition: color 0.3s ease;
+            line-height: 1.5;
+        }
+
+        .record-button-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .record-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
+            transition: transform 0.2s ease, box-shadow 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+        }
+
+        .record-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 25px -5px rgba(99, 102, 241, 0.5);
+        }
+
+        .record-button:active {
+            transform: scale(0.95);
+        }
+
+        .mic-icon {
+            width: 32px;
+            height: 32px;
+            fill: white;
+            transition: opacity 0.3s ease;
+        }
+
+        .stop-icon {
+            width: 28px;
+            height: 28px;
+            background-color: white;
+            border-radius: 4px;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .mic-switcher {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: none;
+            /* Hidden by default */
+            border: 1px solid var(--primary-color);
+        }
+
+        /* Pulse Animation */
+        .pulse-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--pulse-color);
+            opacity: 0;
+            z-index: 1;
+        }
+
+        .recording .pulse-ring {
+            animation: pulse-animation 2s infinite;
+        }
+
+        .recording .record-button {
+            transform: scale(1);
+            background: #ef4444;
+            /* Red for stop */
+            box-shadow: 0 10px 20px -5px rgba(239, 68, 68, 0.4);
+        }
+
+        .recording .mic-icon {
+            display: none;
+            opacity: 0;
+        }
+
+        .recording .stop-icon {
+            display: block;
+            opacity: 1;
+        }
+
+        .recording .status-text {
+            color: #ef4444;
+            font-weight: 500;
+        }
+
+        @keyframes pulse-animation {
+            0% {
+                width: 80px;
+                height: 80px;
+                opacity: 0.5;
+            }
+
+            100% {
+                width: 160px;
+                height: 160px;
+                opacity: 0;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Loader */
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #fff;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Sections */
+        .audio-section {
+            flex: 1;
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .notes-section {
+            flex: 2;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Notepad Styling */
+        .notepad-container {
+            width: 100%;
+            height: 70vh;
+            /* Taller for free flow writing */
+            background: #fff9c4;
+            /* Classic notepad yellow tint */
+            border-radius: 16px;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .notepad-container {
+                background: #1e293b;
+                /* Dark notepad */
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        .notepad-header {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notepad-title {
+            font-weight: 600;
+            color: #334155;
+            font-size: 18px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .notepad-title {
+                color: #e2e8f0;
+            }
+
+            .notepad-header {
+                border-bottom-color: rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.02);
+            }
+        }
+
+        .notepad-textarea {
+            flex: 1;
+            width: 100%;
+            border: none;
+            background: transparent;
+            resize: none;
+            padding: 20px;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #334155;
+            outline: none;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .notepad-textarea {
+                color: #f1f5f9;
+            }
+        }
+
+        .save-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .save-btn:hover {
+            background: var(--secondary-color);
+        }
+
+        .save-btn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+        }
+
+        /* Mobile specific adjustments */
+        /* Mobile specific adjustments */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .audio-section,
+            .notes-section {
+                flex: auto;
+                max-width: 100%;
+                width: 100%;
+            }
+
+            .notepad-container {
+                height: 60vh;
+                position: relative;
+                width: 100%;
+                border-radius: 16px;
+                z-index: 1;
+            }
+
+            .notepad-header {
+                padding-top: 15px;
+            }
+        }
+
+        /* Visualizer */
+        #visualizer {
+            width: 100%;
+            height: 60px;
+            margin-top: 15px;
+            display: none;
+            /* Hidden unless recording */
+        }
+
+        /* No automatic .recording display: block override to control via JS safely */
+
+        /* Fail-Safe Buttons */
+        .retry-btn,
+        .download-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 6px;
+            margin: 8px 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .retry-btn:hover,
+        .download-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .retry-btn {
+            color: #facc15;
+            border-color: rgba(250, 204, 21, 0.3);
+        }
+
+        .download-btn {
+            color: #60a5fa;
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+
+        /* Navbar */
+        .navbar {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            box-sizing: border-box;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            padding-top: 80px;
+            /* Space for navbar */
         }
     </style>
-
 </head>
 
-<body class="bg-slate-900 text-slate-200 min-h-screen font-sans">
+<body>
+    <nav class="navbar">
+        <a href="index.html" class="nav-link active">
+            <span>🎙️</span> <span>Record</span>
+        </a>
+        <a href="feed.html" class="nav-link">
+            <span>📱</span> <span>Feed</span>
+        </a>
+        <button id="nostrLoginBtn" class="nav-link" style="background: #a855f7; color: white; margin-left: auto;">
+            Login
+        </button>
+    </nav>
 
-    <div class="fixed top-0 w-full bg-slate-900/95 backdrop-blur border-b border-slate-700 z-50">
-        <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
-            <h1 class="font-bold text-xl tracking-tight">Home</h1>
-            <div id="status-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+    <audio id="silentAudio" loop playsinline style="display:none;">
+        <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAgZGF0YQQAAAAAAA=="
+            type="audio/wav">
+    </audio>
+
+    <div class="container">
+
+        <!-- VOICE MODE SECTION -->
+        <div id="voiceMode" class="audio-section">
+            <div class="glass-card">
+                <h1>Voice Recorder</h1>
+
+                <div class="record-button-container" id="recordContainer">
+                    <div class="pulse-ring"></div>
+                    <button class="record-button" id="recordBtn">
+                        <svg class="mic-icon" viewBox="0 0 24 24">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                            <path
+                                d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                        </svg>
+                        <div class="stop-icon"></div>
+                    </button>
+                </div>
+
+                <canvas id="visualizer" width="300" height="60"></canvas>
+
+                <div class="status-text" id="statusText">Tap to record</div>
+                <div id="micSwitcher" class="mic-switcher">Switch Mic ⟳</div>
+            </div>
         </div>
-    </div>
 
-    <div id="feed-container" class="max-w-xl mx-auto pt-16 pb-20 px-0">
-        <div class="text-center mt-10 text-slate-500 animate-pulse">Loading feed...</div>
+        <!-- TEXT MODE SECTION -->
+        <div id="textMode" class="notes-section">
+            <div class="notepad-container">
+                <div class="notepad-header">
+                    <span class="notepad-title">New Note</span>
+                    <button class="save-btn" id="saveNoteBtn">
+                        <span>Save</span>
+                    </button>
+                </div>
+                <textarea class="notepad-textarea" id="notepadInput"
+                    placeholder="Start typing your thoughts..."></textarea>
+            </div>
+        </div>
+
     </div>
 
     <script>
-        // Global Store
-        window.postsById = {};
+        // --- Nostr Auth Logic ---
+        const nostrLoginBtn = document.getElementById('nostrLoginBtn');
+        let userPubkey = localStorage.getItem('nostr_pubkey');
 
-        // --- CONFIGURATION ---
-        // Dynamically fetch feed files from the /feed/ directory
-        // Dynamically fetch feed files from the /feed/ directory
-        async function getFeedFiles() {
-            // GitHub Pages does not support directory listing, so we use a hardcoded list.
-            // Ideally this would be generated by a build script.
-            return [
-                'feed/AI_Curator_feed.json',
-                'feed/News_Bot_feed.json',
-                'feed/NAND_Bot_feed.json',
-                'feed/MySky_Bot_feed.json'
-            ];
-        }
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd-xD0xTYGNsyflEBFpHXD8nbkI6RKAFJ1WMKgUGOiy4DTNVEElxiuUIwT6RM_meZrtg/exec'; // <--- PASTE YOUR SCRIPT URL HERE
-
-        // --- AUTHENTICATION LOGIC ---
-        const statusDot = document.getElementById('status-indicator');
-        const headerTitle = document.querySelector('h1');
-
-        // Check if key exists on load
-        if (localStorage.getItem("admin_secret_key")) {
-            statusDot.classList.replace('bg-gray-500', 'bg-green-500');
-        }
-
-        // Double Tap Logic
-        let lastTap = 0;
-        function handleHeaderTap() {
-            const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTap;
-            if (tapLength < 500 && tapLength > 0) {
-                manualLogin();
-                event.preventDefault();
-            }
-            lastTap = currentTime;
-        }
-
-        headerTitle.addEventListener('touchend', handleHeaderTap);
-        headerTitle.addEventListener('click', handleHeaderTap); // For desktop testing
-
-        // NEW: Manual Login Function (Double Tap Handler)
-        function manualLogin() {
-            const currentKey = localStorage.getItem("admin_secret_key");
-            const input = prompt("Enter Admin Key:", currentKey || "");
-
-            if (input) {
-                localStorage.setItem("admin_secret_key", input);
-                statusDot.classList.replace('bg-gray-500', 'bg-green-500');
-                alert("✅ Key Saved! You are logged in.");
-            }
-        }
-
-        // Keep Magic Link (Optional backup)
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('setup')) {
-            localStorage.setItem("admin_secret_key", urlParams.get('setup'));
-            statusDot.classList.replace('bg-gray-500', 'bg-green-500');
-            // We delay clearing the URL slightly so you see it worked
-            setTimeout(() => {
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }, 1000);
-        }
-        // --- 2. FETCH AND RENDER FEED ---
-        async function loadFeed() {
-            // Check for file protocol which blocks fetch
-            if (window.location.protocol === 'file:') {
-                document.getElementById('feed-container').innerHTML =
-                    `<div class="p-4 text-center text-red-400 border border-red-500 rounded m-4">
-                        <h3 class="font-bold">⚠️ Local File Access Error</h3>
-                        <p class="mt-2 text-sm text-slate-300">Browsers cannot "fetch" JSON files directly from the file system (file://) due to security rules ("CORS").</p>
-                        <p class="mt-4 text-sm font-mono bg-slate-800 p-2 rounded">Run ./start_server.sh</p>
-                        <p class="mt-2 text-sm">Or use python -m http.server 8000</p>
-                    </div>`;
-                return;
-            }
-
-            try {
-                const feedFiles = await getFeedFiles();
-                const feedPromises = feedFiles.map(async (file) => {
-                    const response = await fetch(file);
-                    if (!response.ok) throw new Error(`Failed to load ${file}`);
-                    const data = await response.json();
-
-                    // Extract name from filename: "feed/AI_Curator_feed.json" -> "AI_Curator" -> "AI Curator"
-                    const filename = file.split('/').pop(); // "AI_Curator_feed.json"
-                    const namePart = filename.replace('_feed.json', ''); // "AI_Curator"
-                    const authorName = namePart.replace(/_/g, ' '); // "AI Curator"
-
-                    // Generate consistent avatar seed from name
-                    let hash = 0;
-                    for (let i = 0; i < authorName.length; i++) {
-                        hash = authorName.charCodeAt(i) + ((hash << 5) - hash);
-                    }
-                    const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${Math.abs(hash)}`;
-
-                    // Inject author meta into each post
-                    return data.map(post => {
-                        return {
-                            ...post,
-                            feedName: namePart, // Store the raw feed name for filenames
-                            author: {
-                                name: authorName,
-                                avatar: avatarUrl,
-                                handle: ""
-                            },
-                            // Use ID for sorting (YYYYMMDDHHMM)
-                            timestamp: post.id
-                        };
-                    });
-                });
-
-                const results = await Promise.all(feedPromises);
-                const allPosts = results.flat();
-
-                // Sort by ID descending (works for YYYYMMDDHHMM strings)
-                allPosts.sort((a, b) => b.id.localeCompare(a.id));
-
-                // Populate Global Store
-                window.postsById = {};
-                allPosts.forEach(post => {
-                    window.postsById[post.id] = post;
-                });
-
-                renderPosts(allPosts);
-            } catch (err) {
-                console.error("Error loading feeds:", err);
-                document.getElementById('feed-container').innerHTML =
-                    `<div class="p-4 text-center text-red-400">Error loading feed. <br><small class="text-slate-500">${err.message}</small></div>`;
-            }
-        }
-
-
-        function renderPosts(posts) {
-            const container = document.getElementById('feed-container');
-            container.innerHTML = ''; // Clear loading
-
-            // Filter out hidden posts from localStorage
-            const hiddenPosts = JSON.parse(localStorage.getItem('hiddenPosts') || '[]');
-            const visiblePosts = posts.filter(post => !hiddenPosts.includes(post.id));
-
-            visiblePosts.forEach(post => {
-                // Parse timestamp from ID YYYYMMDDHHMM
-                const year = post.id.substring(0, 4);
-                const month = post.id.substring(4, 6);
-                const day = post.id.substring(6, 8);
-                const hour = post.id.substring(8, 10);
-                const minute = post.id.substring(10, 12);
-                const dateObj = new Date(`${year}-${month}-${day}T${hour}:${minute}:00`);
-                const timeStr = isNaN(dateObj) ? "" : dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                const html = `
-                <div id="post-${post.id}" class="border-b border-slate-800 p-4 hover:bg-slate-800/50 transition duration-200">
-                    <div class="flex gap-3">
-                        <img src="${post.author.avatar}" class="w-12 h-12 rounded-full bg-slate-700 object-cover flex-shrink-0">
-                        
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-baseline justify-between">
-                                <div class="flex items-center gap-1 overflow-hidden">
-                                    <span class="font-bold text-white truncate">${post.author.name}</span>
-                                    <span class="text-slate-500 text-sm truncate">${post.author.handle}</span>
-                                    <span class="text-slate-500 text-sm">· ${timeStr}</span>
-                                </div>
-                            </div>
-
-                            ${post.title ? `<h3 id="title-${post.id}" class="mt-1 font-bold text-base text-white">${post.title}</h3>` : ''}
-
-                            <div id="content-${post.id}" class="mt-1 text-[15px] leading-normal text-slate-100 whitespace-pre-wrap outline-none focus:ring-1 focus:ring-blue-500/50 rounded px-1 -ml-1 transition" contenteditable="true">
-                                ${linkify(post.content.trim())}
-                                ${post.tags && post.tags.length > 0 ? `<div class="mt-2 text-blue-400 font-medium text-sm">${post.tags.map(t => `#${t}`).join(' ')}</div>` : ''}
-                            </div>
-
-                            <div class="mt-3 flex items-center justify-center gap-20 text-slate-500">
-                                <button onclick="handleInteraction('like', '${post.id}')" class="group flex items-center gap-1.5 hover:text-pink-500 tap-highlight-transparent">
-                                    <svg class="w-5 h-5 group-hover:bg-pink-500/10 rounded-full p-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
-                                </button>
-
-                                <button onclick="handleInteraction('reply', '${post.id}')" class="group flex items-center gap-1.5 hover:text-blue-400 tap-highlight-transparent">
-                                    <svg class="w-5 h-5 group-hover:bg-blue-500/10 rounded-full p-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-                container.insertAdjacentHTML('beforeend', html);
-            });
-        }
-
-        // --- 3. HANDLE INTERACTIONS ---
-        async function handleInteraction(type, postId) {
-            const secret = localStorage.getItem("admin_secret_key");
-
-            if (!secret) {
-                alert("🔒 Read-Only Mode.\n\nTo enable interactions, visit this URL with ?setup=YOUR_PASSWORD");
-                return;
-            }
-
-            // Look up post in Global Store
-            const post = window.postsById[postId];
-            if (!post) {
-                console.error("Error: Post not found in memory.");
-                return;
-            }
-
-            let commentText = "";
-            let postContent = "";
-
-            if (type === 'reply') {
-                commentText = prompt("Write your reply:");
-                if (commentText === null) return; // Cancelled
+        function updateLoginUI() {
+            if (userPubkey) {
+                nostrLoginBtn.innerText = `Logged in`;
+                nostrLoginBtn.style.background = '#22c55e';
+                nostrLoginBtn.disabled = true;
             } else {
-                const contentEl = document.getElementById(`content-${postId}`);
-                postContent = contentEl ? contentEl.innerText : post.content;
+                nostrLoginBtn.innerText = 'Login with Nostr';
+                nostrLoginBtn.style.background = '#a855f7';
+                nostrLoginBtn.disabled = false;
             }
+        }
+        updateLoginUI();
 
-            // Prepared Payload
-            const payload = {
-                secret: secret,
-                type: type,
-                postId: postId,
-                comment: commentText,
-                postContent: postContent,      // Used for Like
-                postTitle: post.title || "",   // From Store
-                feedName: post.feedName || "", // From Store
-                tags: post.tags || []          // From Store
-            };
-
-            console.log("🚀 Sending Payload:", payload); // Debugging
-
-            // Optimistic UI Update: Hide post immediately
-            const postElement = document.getElementById(`post-${postId}`);
-            if (postElement) {
-                postElement.style.display = 'none';
+        nostrLoginBtn.addEventListener('click', async () => {
+            if (!window.nostr) {
+                alert("Nostr extension not found! Please install nos2x or similar.");
+                return;
             }
-
-            // Update LocalStorage to keep it hidden on reload
-            const hiddenPosts = JSON.parse(localStorage.getItem('hiddenPosts') || '[]');
-            if (!hiddenPosts.includes(postId)) {
-                hiddenPosts.push(postId);
-                localStorage.setItem('hiddenPosts', JSON.stringify(hiddenPosts));
-            }
-
-            // Send to Google Script
             try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                console.log("✅ Request sent (result hidden by no-cors)");
-            } catch (error) {
-                console.error("Error sending data:", error);
-                // Optionally unhide if it failed? User said "No messages needed" for success.
-                // If it fails silently, the user might assume it worked.
-                // For now, let's just log it.
+                userPubkey = await window.nostr.getPublicKey();
+                localStorage.setItem('nostr_pubkey', userPubkey);
+                updateLoginUI();
+            } catch (err) {
+                console.error(err);
+                alert("Login failed");
+            }
+        });
+
+        const recordBtn = document.getElementById('recordBtn');
+        const recordContainer = document.getElementById('recordContainer');
+        const statusText = document.getElementById('statusText');
+        const silentAudio = document.getElementById('silentAudio');
+        const micSwitcher = document.getElementById('micSwitcher');
+
+        const notepadInput = document.getElementById('notepadInput');
+        const saveNoteBtn = document.getElementById('saveNoteBtn');
+
+        // Global to track available devices
+        let availableAudioInputs = [];
+        let currentDeviceIndex = 0;
+        let selectedDeviceId = null; // Store user preference
+
+        // Web Audio Globals
+        let audioContext = null;
+        let mediaStreamDestination = null;
+        let currentSourceNode = null;
+
+        // Recorder Globals
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordingStream = null; // The stream being recorded (from destination)
+
+        let analyser = null;
+        let animationId;
+        let currentAudioBlob = null;
+
+        // Visualizer Canvas
+        const visualizerCanvas = document.getElementById('visualizer');
+        const canvasCtx = visualizerCanvas.getContext('2d');
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzF_gTJ2m0YEtJ6kHO8EiGMeSYtquPt7g0m3-IOPW5hD-cXkxmsZLkR1eDpCjVQWsXV/exec";
+
+
+        // Initialize on load
+        window.addEventListener('load', async () => {
+            try {
+                // Check if we can list devices without prompt
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const hasAudio = devices.some(d => d.kind === 'audioinput' && d.label);
+                if (hasAudio) {
+                    await refreshDeviceList();
+                    updateStatusText();
+                }
+            } catch (e) {
+                console.log("Initial device check failed", e);
+            }
+        });
+
+        async function refreshDeviceList() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                availableAudioInputs = devices.filter(d => d.kind === 'audioinput');
+
+                // Show/Hide Switcher based on count
+                if (availableAudioInputs.length > 1) {
+                    micSwitcher.style.display = 'block';
+                    micSwitcher.innerText = `Switch Mic (Found ${availableAudioInputs.length})`;
+                } else {
+                    micSwitcher.style.display = 'none';
+                }
+                return availableAudioInputs;
+            } catch (e) {
+                return [];
             }
         }
 
-        // Utilities
-        function formatTime(isoString) {
-            const date = new Date(isoString);
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        async function initAudioEngine() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                mediaStreamDestination = audioContext.createMediaStreamDestination();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 64;
+            }
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
         }
 
-        function linkify(text) {
-            // Simple regex to make links clickable and highlight hashtags
-            return text
-                .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" onclick="event.stopPropagation()">$1</a>')
-                .replace(/#(\w+)/g, '<span class="text-blue-400 font-medium">#$1</span>');
+        async function connectInputToEngine(stream) {
+            // 1. Disconnect old source if exists
+            if (currentSourceNode) {
+                currentSourceNode.disconnect();
+            }
+
+            // 2. Create new source
+            currentSourceNode = audioContext.createMediaStreamSource(stream);
+
+            // 3. Connect: Source -> Analyser (Visualizer) -> Destination (Recorder)
+            currentSourceNode.connect(analyser);
+            analyser.connect(mediaStreamDestination);
         }
 
-        // Init
-        loadFeed();
+        async function switchMicrophone() {
+            await refreshDeviceList();
+            if (availableAudioInputs.length < 2) return;
+
+            currentDeviceIndex = (currentDeviceIndex + 1) % availableAudioInputs.length;
+            const nextDevice = availableAudioInputs[currentDeviceIndex];
+            selectedDeviceId = nextDevice.deviceId;
+
+            if (isRecording) {
+                statusText.innerHTML = `Switching to <b>${nextDevice.label}</b>...`;
+
+                // Hot-swap logic
+                try {
+                    const newStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: selectedDeviceId } } });
+                    await connectInputToEngine(newStream);
+                    statusText.innerHTML = `Recording via <b>${nextDevice.label}</b>`;
+                } catch (e) {
+                    console.error("Hot-swap failed", e);
+                    statusText.innerText = "Switch failed! Continuing...";
+                }
+            } else {
+                // Idle switch
+                updateStatusText(nextDevice.label);
+            }
+        }
+
+        function updateStatusText(labelOverride = null) {
+            if (isRecording) return; // Don't overwrite if recording
+
+            if (labelOverride) {
+                statusText.innerHTML = `Ready: <b>${labelOverride}</b>`;
+            } else if (availableAudioInputs.length > 0) {
+                const dev = selectedDeviceId ? availableAudioInputs.find(d => d.deviceId === selectedDeviceId) : availableAudioInputs[0];
+                const label = dev ? dev.label : "Default Mic";
+                statusText.innerHTML = `Ready: <b>${label}</b>`;
+            } else {
+                statusText.innerText = "Tap to record";
+            }
+        }
+
+        micSwitcher.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (availableAudioInputs.length === 0 || availableAudioInputs[0].label === "") {
+                navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+                    s.getTracks().forEach(t => t.stop()); // Just to get permission
+                    refreshDeviceList().then(() => switchMicrophone());
+                }).catch(e => alert("Mic permission needed to switch"));
+            } else {
+                switchMicrophone();
+            }
+        });
+
+        async function startRecording() {
+            try {
+                statusText.innerText = "Starting...";
+                await initAudioEngine();
+
+                // 1. Determine Device ID
+                let constraints = { audio: true };
+                // Use stored selection or default
+                const finalDeviceId = selectedDeviceId;
+                if (finalDeviceId) {
+                    constraints = { audio: { deviceId: { exact: finalDeviceId } } };
+                }
+
+                // 2. Get Input Stream
+                let inputStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                // 3. Connect to Audio Graph
+                await connectInputToEngine(inputStream);
+
+                // 4. Auto-Detect Bluetooth (if first run / no selection)
+                if (!selectedDeviceId) {
+                    await refreshDeviceList();
+                    const headsetKeywords = ['bluetooth', 'headset', 'airpods', 'buds', 'freebuds', 'pixel buds', 'headphones'];
+                    const bestMic = availableAudioInputs.find(d => headsetKeywords.some(k => d.label.toLowerCase().includes(k)));
+
+                    if (bestMic) {
+                        const currentInputTrack = inputStream.getAudioTracks()[0];
+                        if (currentInputTrack.getSettings().deviceId !== bestMic.deviceId) {
+                            console.log("Auto-switching to:", bestMic.label);
+                            // Stop generic, get specific
+                            currentInputTrack.stop();
+                            inputStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: bestMic.deviceId } } });
+                            await connectInputToEngine(inputStream); // Reconnect
+                            selectedDeviceId = bestMic.deviceId;
+                        }
+                    }
+                }
+
+                // Update Index/UI
+                if (selectedDeviceId) {
+                    const foundIndex = availableAudioInputs.findIndex(d => d.deviceId === selectedDeviceId);
+                    if (foundIndex !== -1) currentDeviceIndex = foundIndex;
+                }
+
+                // 5. Start Recorder on DESTINATION Stream (Mixed/Processed Audio)
+                recordingStream = mediaStreamDestination.stream;
+
+                let options = { mimeType: 'audio/webm' };
+                if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                    options = { mimeType: 'audio/mp4' };
+                }
+
+                mediaRecorder = new MediaRecorder(recordingStream, options);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    if (animationId) cancelAnimationFrame(animationId);
+
+                    const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+                    uploadAudio(audioBlob);
+
+                    if (currentSourceNode && currentSourceNode.mediaStream) {
+                        currentSourceNode.mediaStream.getTracks().forEach(t => t.stop());
+                    }
+                    if (recordingStream) recordingStream.getTracks().forEach(t => t.stop());
+
+                    visualizerCanvas.style.display = 'none';
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordContainer.classList.add('recording');
+
+                // UI
+                const activeLabel = availableAudioInputs.find(d => d.deviceId === selectedDeviceId)?.label || "Default Mic";
+                statusText.innerHTML = `Recording via <b>${activeLabel}</b>`;
+
+                silentAudio.play().catch(e => console.log("Silent audio play failed", e));
+                visualizerCanvas.style.display = 'block';
+                drawVisualizer();
+
+            } catch (err) {
+                console.error("Start Error:", err);
+                statusText.innerText = "Error: " + err.message;
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordContainer.classList.remove('recording');
+                statusText.innerText = "Processing...";
+                silentAudio.pause();
+                silentAudio.currentTime = 0;
+            }
+        }
+
+        recordBtn.addEventListener('click', () => {
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+
+        // --- Visualizer Logic ---
+        function drawVisualizer() {
+            if (!isRecording) return;
+            animationId = requestAnimationFrame(drawVisualizer);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+
+            const barWidth = (visualizerCanvas.width / bufferLength) - 2;
+            let barHeight;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                barHeight = dataArray[i] / 2;
+                canvasCtx.fillStyle = `rgba(255, 59, 48, ${barHeight / 150 + 0.5})`;
+                canvasCtx.fillRect(x, (visualizerCanvas.height - barHeight) / 2, barWidth, barHeight);
+                x += barWidth + 2;
+            }
+        }
+
+        // --- Utils, Upload, Notes (Legacy/Original Logic) ---
+
+        function generateUniqueFilename(prefix, extension) {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            return `${prefix}_${yyyy}${mm}${dd}_${hh}${min}${ss}.${extension}`;
+        }
+
+        function isMobile() {
+            return window.innerWidth <= 768;
+        }
+
+        window.retryUpload = function () {
+            if (currentAudioBlob) {
+                uploadAudio(currentAudioBlob);
+            }
+        };
+
+        window.downloadLocally = function () {
+            if (!currentAudioBlob) return;
+            const url = URL.createObjectURL(currentAudioBlob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            let ext = "webm";
+            if (currentAudioBlob.type.includes("mp4")) ext = "mp4";
+            else if (currentAudioBlob.type.includes("mp3")) ext = "mp3";
+            a.download = generateUniqueFilename("Audio_Saved", ext);
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            statusText.innerText = "Saved to Device!";
+            setTimeout(() => { statusText.innerText = "Tap to record"; }, 2000);
+        };
+
+        async function uploadAudio(audioBlob) {
+            currentAudioBlob = audioBlob;
+            statusText.innerHTML = '<span class="loader"></span> Uploading...';
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = async function () {
+                const base64String = reader.result.split(',')[1];
+                const filename = generateUniqueFilename("Audio", "mp3");
+                const myKey = localStorage.getItem("nostr_pubkey");
+                try {
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        redirect: "follow",
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            secret: myKey,
+                            filename: filename,
+                            fileData: base64String,
+                            mimeType: audioBlob.type,
+                            mimetype: audioBlob.type,
+                            type: audioBlob.type
+                        })
+                    });
+                    const text = await response.text();
+                    if (text.includes("Access Denied")) throw new Error("Access Denied");
+                    statusText.innerText = "Saved!";
+                    currentAudioBlob = null;
+                    setTimeout(() => { if (!isRecording) updateStatusText(); }, 2000);
+                } catch (error) {
+                    console.error("Upload failed", error);
+                    let errorMsg = "Upload Failed!";
+                    if (error.message === "Access Denied") errorMsg = "Access Denied!";
+                    statusText.innerHTML = `${errorMsg}<br><button class="retry-btn" onclick="retryUpload()">Retry</button><button class="download-btn" onclick="downloadLocally()">Save to Device</button>`;
+                }
+            };
+        }
+
+        async function saveNote() {
+            const text = notepadInput.value.trim();
+            if (!text) return;
+            const originalBtnText = saveNoteBtn.innerHTML;
+            saveNoteBtn.innerHTML = '<span class="loader" style="width:14px;height:14px;border-width:2px;"></span> Saving...';
+            saveNoteBtn.disabled = true;
+            const filename = generateUniqueFilename("Note", "txt");
+            const base64Data = btoa(unescape(encodeURIComponent(text)));
+            const myKey = localStorage.getItem("nostr_pubkey");
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    redirect: "follow",
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        secret: myKey,
+                        filename: filename,
+                        fileData: base64Data,
+                        mimeType: "text/plain",
+                        mimetype: "text/plain",
+                        type: "text/plain"
+                    })
+                });
+                const text = await response.text();
+                if (text.includes("Access Denied")) throw new Error("Access Denied");
+                saveNoteBtn.innerHTML = 'Saved!';
+                setTimeout(() => {
+                    saveNoteBtn.innerHTML = originalBtnText;
+                    saveNoteBtn.disabled = false;
+                    notepadInput.value = '';
+                }, 2000);
+            } catch (error) {
+                console.error("Text Upload failed", error);
+                let errorMsg = "Error";
+                if (error.message === "Access Denied") errorMsg = "Access Denied";
+                saveNoteBtn.innerHTML = errorMsg;
+                setTimeout(() => {
+                    saveNoteBtn.innerHTML = originalBtnText;
+                    saveNoteBtn.disabled = false;
+                }, 2000);
+            }
+        }
+        saveNoteBtn.addEventListener('click', saveNote);
 
     </script>
 </body>
