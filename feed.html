@@ -81,7 +81,7 @@
     </div>
 
     <!-- Load Nostr Login (shim for window.nostr) -->
-    <script src="https://unpkg.com/nostr-login@latest/dist/unpkg.js"></script>
+    <script src="https://unpkg.com/nostr-login@latest/dist/unpkg.js" defer></script>
     <!-- Load Nostr Tools for decoding NPUBs -->
     <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
 
@@ -108,7 +108,7 @@
         // --- AUTHENTICATION LOGIC (NOSTR) ---
         // --- AUTHENTICATION LOGIC (NOSTR) ---
         const nostrLoginBtn = document.getElementById('nostrLoginBtn');
-        let userPubkey = null;
+        let userPubkey = localStorage.getItem('nostr_pubkey');
 
         // Listen for nostr-login auth event
         document.addEventListener('nlAuth', (e) => {
@@ -134,6 +134,7 @@
                 nostrLoginBtn.disabled = false;
             }
         }
+        updateLoginUI();
 
         nostrLoginBtn.addEventListener('click', () => {
             // nostr-login handles the flow via its own UI
@@ -590,10 +591,7 @@
         loadFeed();
 
         // Ensure NostrTools loaded check
-        // Ensure NostrTools loaded check
-        window.addEventListener('load', () => {
-            updateLoginUI();
-        });
+
 
     </script>
 </body>
