@@ -3,8 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <title>Voice Note Recorder</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
@@ -424,6 +430,7 @@
             z-index: 1000;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             box-sizing: border-box;
+            padding-top: calc(15px + env(safe-area-inset-top));
         }
 
         .nav-link {
@@ -445,7 +452,8 @@
         }
 
         body {
-            padding-top: 80px;
+            padding-top: calc(80px + env(safe-area-inset-top));
+            padding-bottom: env(safe-area-inset-bottom);
             /* Space for navbar */
         }
     </style>
