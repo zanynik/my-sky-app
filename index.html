@@ -457,6 +457,7 @@
             /* Space for navbar */
         }
     </style>
+    <script src="https://unpkg.com/nostr-login@latest/dist/unpkg.js"></script>
 </head>
 
 <body>
@@ -538,17 +539,16 @@
         updateLoginUI();
 
         nostrLoginBtn.addEventListener('click', async () => {
-            if (!window.nostr) {
-                alert("Nostr extension not found! Please install nos2x or similar.");
-                return;
-            }
+            // nostr-login handles the flow. Calling getPublicKey will trigger the UI if needed.
             try {
+                if (!window.nostr) {
+                    console.log("Waiting for nostr-login to initialize...");
+                }
                 userPubkey = await window.nostr.getPublicKey();
                 localStorage.setItem('nostr_pubkey', userPubkey);
                 updateLoginUI();
             } catch (err) {
-                console.error(err);
-                alert("Login failed");
+                console.error("Login cancelled or failed", err);
             }
         });
 

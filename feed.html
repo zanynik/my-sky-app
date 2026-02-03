@@ -80,6 +80,8 @@
         <div class="text-center mt-10 text-slate-500 animate-pulse">Loading feed...</div>
     </div>
 
+    <!-- Load Nostr Login (shim for window.nostr) -->
+    <script src="https://unpkg.com/nostr-login@latest/dist/unpkg.js"></script>
     <!-- Load Nostr Tools for decoding NPUBs -->
     <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
 
@@ -134,17 +136,13 @@
         }
 
         nostrLoginBtn.addEventListener('click', async () => {
-            if (!window.nostr) {
-                alert("Nostr extension not found! Please install nos2x or similar.");
-                return;
-            }
+            // nostr-login handles the flow
             try {
                 userPubkey = await window.nostr.getPublicKey();
                 localStorage.setItem('nostr_pubkey', userPubkey);
                 updateLoginUI();
             } catch (err) {
-                console.error(err);
-                alert("Login failed");
+                console.error("Login cancelled or failed", err);
             }
         });
 
