@@ -106,16 +106,28 @@
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd-xD0xTYGNsyflEBFpHXD8nbkI6RKAFJ1WMKgUGOiy4DTNVEElxiuUIwT6RM_meZrtg/exec';
 
         // --- AUTHENTICATION LOGIC (NOSTR) ---
+        // --- AUTHENTICATION LOGIC (NOSTR) ---
         const nostrLoginBtn = document.getElementById('nostrLoginBtn');
-        let userPubkey = localStorage.getItem('nostr_pubkey');
+        let userPubkey = null;
+
+        // Listen for nostr-login auth event
+        document.addEventListener('nlAuth', (e) => {
+            if (e.detail.type === 'login' || e.detail.type === 'signup') {
+                userPubkey = e.detail.pubkey;
+                localStorage.setItem('nostr_pubkey', userPubkey);
+                updateLoginUI();
+                fetchInsights(); // Trigger immediately without timeout
+            } else {
+                userPubkey = null;
+                updateLoginUI();
+            }
+        });
 
         function updateLoginUI() {
             if (userPubkey) {
                 nostrLoginBtn.innerText = `Logged in`;
                 nostrLoginBtn.style.background = '#22c55e';
                 nostrLoginBtn.disabled = true;
-                // Trigger private fetch if logged in
-                setTimeout(fetchInsights, 1000);
             } else {
                 nostrLoginBtn.innerText = 'Login with Nostr';
                 nostrLoginBtn.style.background = '#a855f7';
@@ -123,6 +135,13 @@
             }
         }
 
+        nostrLoginBtn.addEventListener('click', () => {
+            // nostr-login handles the flow via its own UI
+            // We just ensure we ask for a public key to trigger it if not auto-triggered
+            window.nostr.getPublicKey().catch(e => console.log("Login deferred", e));
+        });
+
+        // --- 2. FETCH INSIGHTS (KIND 10001) ---
         // Helper: Decode NPUB to HEX
         function getNpubHex(npub) {
             try {
@@ -135,24 +154,14 @@
             }
         }
 
-        nostrLoginBtn.addEventListener('click', async () => {
-            // nostr-login handles the flow
-            try {
-                userPubkey = await window.nostr.getPublicKey();
-                localStorage.setItem('nostr_pubkey', userPubkey);
-                updateLoginUI();
-            } catch (err) {
-                console.error("Login cancelled or failed", err);
-            }
-        });
-
         // --- 2. FETCH INSIGHTS (KIND 10001) ---
         async function fetchInsights() {
             if (!userPubkey) return; // Needs login
+
+            // Check if NostrTools is ready (it should be since it is a script tag)
             if (!window.NostrTools) {
-                // Wait for lib to load
-                console.log("Waiting for NostrTools...");
-                setTimeout(fetchInsights, 500);
+                console.warn("NostrTools not loaded yet. Retrying in 100ms...");
+                setTimeout(fetchInsights, 100);
                 return;
             }
 
@@ -408,8 +417,8 @@
 
                 renderPosts(allPosts);
 
-                // Attempt to load insights if already logged in
-                setTimeout(fetchInsights, 1000);
+                // Attempt to load insights if already logged in (optimistic check)
+                if (window.nostr && userPubkey) fetchInsights();
 
             } catch (err) {
                 console.error("Error loading feeds:", err);
@@ -581,9 +590,10 @@
         loadFeed();
 
         // Ensure NostrTools loaded check
-        window.addEventListener('load', () => {
-            updateLoginUI();
-        });
+        // Ensure NostrTools loaded check
+        // window.addEventListener('load', () => {
+        //     updateLoginUI();
+        // });
 
     </script>
 </body>
