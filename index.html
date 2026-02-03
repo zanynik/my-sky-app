@@ -10,11 +10,18 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="prefetch" href="feed.html">
 
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS (for Feed) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Dependencies -->
+    <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+
     <style>
         :root {
             --primary-color: #6366f1;
@@ -27,6 +34,7 @@
             --input-bg: rgba(255, 255, 255, 0.1);
         }
 
+        /* Override Tailwind resets where necessary */
         body {
             margin: 0;
             padding: 0;
@@ -37,13 +45,24 @@
                 radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 40%);
             color: var(--text-color);
             min-height: 100vh;
+            /* Flex layout for center alignment is specific to Record View, 
+               but we can keep it as base and override for Feed if needed */
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
+            /* Changed from center to allow scrolling */
             overflow-x: hidden;
             overflow-y: auto;
+            padding-top: calc(80px + env(safe-area-inset-top));
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
+        /* Helpers */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Record View Container */
         .container {
             position: relative;
             width: 100%;
@@ -57,6 +76,48 @@
             box-sizing: border-box;
         }
 
+        /* Navbar */
+        .navbar {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 15px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            box-sizing: border-box;
+            padding-top: calc(15px + env(safe-area-inset-top));
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            /* Ensure pointer for buttons */
+            background: transparent;
+            border: none;
+            font-size: 1rem;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* --- RECORD VIEW STYLES --- */
         .glass-card {
             background: var(--card-bg);
             backdrop-filter: blur(16px);
@@ -81,6 +142,8 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             letter-spacing: 0.5px;
+            /* Fix Tailwind reset */
+            line-height: 1.2;
         }
 
         .status-text {
@@ -90,6 +153,7 @@
             min-height: 20px;
             transition: color 0.3s ease;
             line-height: 1.5;
+            text-align: center;
         }
 
         .record-button-container {
@@ -152,7 +216,6 @@
             border-radius: 12px;
             cursor: pointer;
             display: none;
-            /* Hidden by default */
             border: 1px solid var(--primary-color);
         }
 
@@ -177,7 +240,6 @@
         .recording .record-button {
             transform: scale(1);
             background: #ef4444;
-            /* Red for stop */
             box-shadow: 0 10px 20px -5px rgba(239, 68, 68, 0.4);
         }
 
@@ -210,11 +272,6 @@
             }
         }
 
-        .hidden {
-            display: none !important;
-        }
-
-        /* Loader */
         .loader {
             width: 20px;
             height: 20px;
@@ -236,7 +293,6 @@
             }
         }
 
-        /* Sections */
         .audio-section {
             flex: 1;
             width: 100%;
@@ -257,9 +313,7 @@
         .notepad-container {
             width: 100%;
             height: 70vh;
-            /* Taller for free flow writing */
             background: #fff9c4;
-            /* Classic notepad yellow tint */
             border-radius: 16px;
             position: relative;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -272,7 +326,6 @@
         @media (prefers-color-scheme: dark) {
             .notepad-container {
                 background: #1e293b;
-                /* Dark notepad */
                 border: 1px solid rgba(255, 255, 255, 0.1);
             }
         }
@@ -347,8 +400,6 @@
             cursor: not-allowed;
         }
 
-        /* Mobile specific adjustments */
-        /* Mobile specific adjustments */
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
@@ -364,29 +415,18 @@
 
             .notepad-container {
                 height: 60vh;
-                position: relative;
                 width: 100%;
                 border-radius: 16px;
-                z-index: 1;
-            }
-
-            .notepad-header {
-                padding-top: 15px;
             }
         }
 
-        /* Visualizer */
         #visualizer {
             width: 100%;
             height: 60px;
             margin-top: 15px;
             display: none;
-            /* Hidden unless recording */
         }
 
-        /* No automatic .recording display: block override to control via JS safely */
-
-        /* Fail-Safe Buttons */
         .retry-btn,
         .download-btn {
             background: rgba(255, 255, 255, 0.1);
@@ -416,115 +456,116 @@
             border-color: rgba(96, 165, 250, 0.3);
         }
 
-        /* Navbar */
-        .navbar {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            z-index: 1000;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            box-sizing: border-box;
-            padding-top: calc(15px + env(safe-area-inset-top));
-        }
-
-        .nav-link {
-            color: rgba(255, 255, 255, 0.7);
-            text-decoration: none;
-            font-weight: 600;
-            padding: 8px 16px;
-            border-radius: 8px;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .nav-link:hover,
-        .nav-link.active {
-            color: white;
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        body {
-            padding-top: calc(80px + env(safe-area-inset-top));
-            padding-bottom: env(safe-area-inset-bottom);
-            /* Space for navbar */
+        /* --- FEED VIEW STYLES (Helpers) --- */
+        .tap-highlight-transparent {
+            -webkit-tap-highlight-color: transparent;
         }
     </style>
-
 </head>
 
 <body>
+    <!-- Navbar -->
     <nav class="navbar">
-        <a href="index.html" class="nav-link active">
+        <button onclick="switchTab('record')" id="nav-record" class="nav-link active">
             <span>🎙️</span> <span>Record</span>
-        </a>
-        <a href="feed.html" class="nav-link">
+        </button>
+        <button onclick="switchTab('feed')" id="nav-feed" class="nav-link">
             <span>📱</span> <span>Feed</span>
-        </a>
+        </button>
         <button id="nostrLoginBtn" class="nav-link" style="background: #a855f7; color: white; margin-left: auto;">
             Login
         </button>
     </nav>
 
+    <!-- Silent Audio for iOS Recording -->
     <audio id="silentAudio" loop playsinline style="display:none;">
         <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAgZGF0YQQAAAAAAA=="
             type="audio/wav">
     </audio>
 
-    <div class="container">
-
-        <!-- VOICE MODE SECTION -->
-        <div id="voiceMode" class="audio-section">
-            <div class="glass-card">
-                <h1>Voice Recorder</h1>
-
-                <div class="record-button-container" id="recordContainer">
-                    <div class="pulse-ring"></div>
-                    <button class="record-button" id="recordBtn">
-                        <svg class="mic-icon" viewBox="0 0 24 24">
-                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                            <path
-                                d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                        </svg>
-                        <div class="stop-icon"></div>
-                    </button>
+    <!-- VIEW: RECORD -->
+    <div id="record-view" class="view-section" style="width: 100%; display: flex; justify-content: center;">
+        <div class="container">
+            <!-- VOICE MODE SECTION -->
+            <div id="voiceMode" class="audio-section">
+                <div class="glass-card">
+                    <h1>Voice Recorder</h1>
+                    <div class="record-button-container" id="recordContainer">
+                        <div class="pulse-ring"></div>
+                        <button class="record-button" id="recordBtn">
+                            <svg class="mic-icon" viewBox="0 0 24 24">
+                                <path
+                                    d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                                <path
+                                    d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                            </svg>
+                            <div class="stop-icon"></div>
+                        </button>
+                    </div>
+                    <canvas id="visualizer" width="300" height="60"></canvas>
+                    <div class="status-text" id="statusText">Tap to record</div>
+                    <div id="micSwitcher" class="mic-switcher">Switch Mic ⟳</div>
                 </div>
+            </div>
 
-                <canvas id="visualizer" width="300" height="60"></canvas>
-
-                <div class="status-text" id="statusText">Tap to record</div>
-                <div id="micSwitcher" class="mic-switcher">Switch Mic ⟳</div>
+            <!-- TEXT MODE SECTION -->
+            <div id="textMode" class="notes-section">
+                <div class="notepad-container">
+                    <div class="notepad-header">
+                        <span class="notepad-title">New Note</span>
+                        <button class="save-btn" id="saveNoteBtn">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                    <textarea class="notepad-textarea" id="notepadInput"
+                        placeholder="Start typing your thoughts..."></textarea>
+                </div>
             </div>
         </div>
-
-        <!-- TEXT MODE SECTION -->
-        <div id="textMode" class="notes-section">
-            <div class="notepad-container">
-                <div class="notepad-header">
-                    <span class="notepad-title">New Note</span>
-                    <button class="save-btn" id="saveNoteBtn">
-                        <span>Save</span>
-                    </button>
-                </div>
-                <textarea class="notepad-textarea" id="notepadInput"
-                    placeholder="Start typing your thoughts..."></textarea>
-            </div>
-        </div>
-
     </div>
 
+    <!-- VIEW: FEED -->
+    <div id="feed-view" class="view-section hidden" style="width: 100%;">
+        <div id="feed-container" class="max-w-xl mx-auto pb-20 px-0">
+            <div class="text-center mt-10 text-slate-500 animate-pulse">Loading feed...</div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
     <script>
-        // --- Nostr Auth Logic ---
-        const nostrLoginBtn = document.getElementById('nostrLoginBtn');
+        // --- GLOBAL & APP STATE ---
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzF_gTJ2m0YEtJ6kHO8EiGMeSYtquPt7g0m3-IOPW5hD-cXkxmsZLkR1eDpCjVQWsXV/exec"; // Record Script
+        const FEED_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd-xD0xTYGNsyflEBFpHXD8nbkI6RKAFJ1WMKgUGOiy4DTNVEElxiuUIwT6RM_meZrtg/exec'; // Feed Interaction Script
         let userPubkey = localStorage.getItem('nostr_pubkey');
+
+        // --- NAVIGATION ---
+        function switchTab(tab) {
+            const recordView = document.getElementById('record-view');
+            const feedView = document.getElementById('feed-view');
+            const navRecord = document.getElementById('nav-record');
+            const navFeed = document.getElementById('nav-feed');
+
+            if (tab === 'record') {
+                recordView.classList.remove('hidden');
+                feedView.classList.add('hidden');
+                navRecord.classList.add('active');
+                navFeed.classList.remove('active');
+            } else {
+                recordView.classList.add('hidden');
+                feedView.classList.remove('hidden');
+                navRecord.classList.remove('active');
+                navFeed.classList.add('active');
+
+                // Trigger Feed Load if needed
+                if (!window.feedLoaded) {
+                    loadFeed();
+                    window.feedLoaded = true;
+                }
+            }
+        }
+
+        // --- AUTHENTICATION (Shared) ---
+        const nostrLoginBtn = document.getElementById('nostrLoginBtn');
 
         function updateLoginUI() {
             if (userPubkey) {
@@ -537,67 +578,64 @@
                 nostrLoginBtn.disabled = false;
             }
         }
-        updateLoginUI();
 
-        nostrLoginBtn.addEventListener('click', async () => {
-            // nostr-login handles the flow. Calling getPublicKey will trigger the UI if needed.
-            try {
-                if (!window.nostr) {
-                    console.log("Waiting for nostr-login to initialize...");
-                }
-                userPubkey = await window.nostr.getPublicKey();
+        document.addEventListener('nlAuth', (e) => {
+            if (e.detail.type === 'login' || e.detail.type === 'signup') {
+                userPubkey = e.detail.pubkey;
                 localStorage.setItem('nostr_pubkey', userPubkey);
                 updateLoginUI();
-            } catch (err) {
-                console.error("Login cancelled or failed", err);
+                fetchInsights(); // Trigger fetch for Feed 
+            } else {
+                userPubkey = null;
+                updateLoginUI();
             }
         });
 
+        nostrLoginBtn.addEventListener('click', () => {
+            window.nostr.getPublicKey().catch(e => console.log("Login deferred", e));
+        });
+
+        // Initialize UI
+        updateLoginUI();
+
+
+        // =============== RECORDING LOGIC ===============
         const recordBtn = document.getElementById('recordBtn');
         const recordContainer = document.getElementById('recordContainer');
         const statusText = document.getElementById('statusText');
         const silentAudio = document.getElementById('silentAudio');
         const micSwitcher = document.getElementById('micSwitcher');
-
         const notepadInput = document.getElementById('notepadInput');
         const saveNoteBtn = document.getElementById('saveNoteBtn');
+        const visualizerCanvas = document.getElementById('visualizer');
+        const canvasCtx = visualizerCanvas.getContext('2d');
 
-        // Global to track available devices
         let availableAudioInputs = [];
         let currentDeviceIndex = 0;
-        let selectedDeviceId = null; // Store user preference
-
-        // Web Audio Globals
+        let selectedDeviceId = null;
         let audioContext = null;
         let mediaStreamDestination = null;
         let currentSourceNode = null;
-
-        // Recorder Globals
         let mediaRecorder = null;
         let audioChunks = [];
         let isRecording = false;
-        let recordingStream = null; // The stream being recorded (from destination)
-
+        let recordingStream = null;
         let analyser = null;
         let animationId;
         let currentAudioBlob = null;
 
-        // Visualizer Canvas
-        const visualizerCanvas = document.getElementById('visualizer');
-        const canvasCtx = visualizerCanvas.getContext('2d');
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzF_gTJ2m0YEtJ6kHO8EiGMeSYtquPt7g0m3-IOPW5hD-cXkxmsZLkR1eDpCjVQWsXV/exec";
-
-
-        // Initialize on load
+        // Load Devices
         window.addEventListener('load', async () => {
             try {
-                // Check if we can list devices without prompt
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const hasAudio = devices.some(d => d.kind === 'audioinput' && d.label);
                 if (hasAudio) {
                     await refreshDeviceList();
                     updateStatusText();
                 }
+
+                // Also preload feed if we are logged in? No, wait for tab switch or forced load.
+                // We will load feed on first tab switch.
             } catch (e) {
                 console.log("Initial device check failed", e);
             }
@@ -607,8 +645,6 @@
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 availableAudioInputs = devices.filter(d => d.kind === 'audioinput');
-
-                // Show/Hide Switcher based on count
                 if (availableAudioInputs.length > 1) {
                     micSwitcher.style.display = 'block';
                     micSwitcher.innerText = `Switch Mic (Found ${availableAudioInputs.length})`;
@@ -628,21 +664,12 @@
                 analyser = audioContext.createAnalyser();
                 analyser.fftSize = 64;
             }
-            if (audioContext.state === 'suspended') {
-                await audioContext.resume();
-            }
+            if (audioContext.state === 'suspended') await audioContext.resume();
         }
 
         async function connectInputToEngine(stream) {
-            // 1. Disconnect old source if exists
-            if (currentSourceNode) {
-                currentSourceNode.disconnect();
-            }
-
-            // 2. Create new source
+            if (currentSourceNode) currentSourceNode.disconnect();
             currentSourceNode = audioContext.createMediaStreamSource(stream);
-
-            // 3. Connect: Source -> Analyser (Visualizer) -> Destination (Recorder)
             currentSourceNode.connect(analyser);
             analyser.connect(mediaStreamDestination);
         }
@@ -650,15 +677,11 @@
         async function switchMicrophone() {
             await refreshDeviceList();
             if (availableAudioInputs.length < 2) return;
-
             currentDeviceIndex = (currentDeviceIndex + 1) % availableAudioInputs.length;
             const nextDevice = availableAudioInputs[currentDeviceIndex];
             selectedDeviceId = nextDevice.deviceId;
-
             if (isRecording) {
                 statusText.innerHTML = `Switching to <b>${nextDevice.label}</b>...`;
-
-                // Hot-swap logic
                 try {
                     const newStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: selectedDeviceId } } });
                     await connectInputToEngine(newStream);
@@ -668,14 +691,12 @@
                     statusText.innerText = "Switch failed! Continuing...";
                 }
             } else {
-                // Idle switch
                 updateStatusText(nextDevice.label);
             }
         }
 
         function updateStatusText(labelOverride = null) {
-            if (isRecording) return; // Don't overwrite if recording
-
+            if (isRecording) return;
             if (labelOverride) {
                 statusText.innerHTML = `Ready: <b>${labelOverride}</b>`;
             } else if (availableAudioInputs.length > 0) {
@@ -691,7 +712,7 @@
             e.stopPropagation();
             if (availableAudioInputs.length === 0 || availableAudioInputs[0].label === "") {
                 navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-                    s.getTracks().forEach(t => t.stop()); // Just to get permission
+                    s.getTracks().forEach(t => t.stop());
                     refreshDeviceList().then(() => switchMicrophone());
                 }).catch(e => alert("Mic permission needed to switch"));
             } else {
@@ -703,83 +724,53 @@
             try {
                 statusText.innerText = "Starting...";
                 await initAudioEngine();
-
-                // 1. Determine Device ID
                 let constraints = { audio: true };
-                // Use stored selection or default
-                const finalDeviceId = selectedDeviceId;
-                if (finalDeviceId) {
-                    constraints = { audio: { deviceId: { exact: finalDeviceId } } };
-                }
-
-                // 2. Get Input Stream
+                if (selectedDeviceId) constraints = { audio: { deviceId: { exact: selectedDeviceId } } };
                 let inputStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-                // 3. Connect to Audio Graph
                 await connectInputToEngine(inputStream);
 
-                // 4. Auto-Detect Bluetooth (if first run / no selection)
                 if (!selectedDeviceId) {
                     await refreshDeviceList();
                     const headsetKeywords = ['bluetooth', 'headset', 'airpods', 'buds', 'freebuds', 'pixel buds', 'headphones'];
                     const bestMic = availableAudioInputs.find(d => headsetKeywords.some(k => d.label.toLowerCase().includes(k)));
-
                     if (bestMic) {
                         const currentInputTrack = inputStream.getAudioTracks()[0];
                         if (currentInputTrack.getSettings().deviceId !== bestMic.deviceId) {
                             console.log("Auto-switching to:", bestMic.label);
-                            // Stop generic, get specific
                             currentInputTrack.stop();
                             inputStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: bestMic.deviceId } } });
-                            await connectInputToEngine(inputStream); // Reconnect
+                            await connectInputToEngine(inputStream);
                             selectedDeviceId = bestMic.deviceId;
                         }
                     }
                 }
 
-                // Update Index/UI
                 if (selectedDeviceId) {
                     const foundIndex = availableAudioInputs.findIndex(d => d.deviceId === selectedDeviceId);
                     if (foundIndex !== -1) currentDeviceIndex = foundIndex;
                 }
 
-                // 5. Start Recorder on DESTINATION Stream (Mixed/Processed Audio)
                 recordingStream = mediaStreamDestination.stream;
-
                 let options = { mimeType: 'audio/webm' };
-                if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                    options = { mimeType: 'audio/mp4' };
-                }
+                if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
 
                 mediaRecorder = new MediaRecorder(recordingStream, options);
                 audioChunks = [];
-
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
-
+                mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
                 mediaRecorder.onstop = () => {
                     if (animationId) cancelAnimationFrame(animationId);
-
                     const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
                     uploadAudio(audioBlob);
-
-                    if (currentSourceNode && currentSourceNode.mediaStream) {
-                        currentSourceNode.mediaStream.getTracks().forEach(t => t.stop());
-                    }
+                    if (currentSourceNode && currentSourceNode.mediaStream) currentSourceNode.mediaStream.getTracks().forEach(t => t.stop());
                     if (recordingStream) recordingStream.getTracks().forEach(t => t.stop());
-
                     visualizerCanvas.style.display = 'none';
                 };
 
                 mediaRecorder.start();
                 isRecording = true;
                 recordContainer.classList.add('recording');
-
-                // UI
                 const activeLabel = availableAudioInputs.find(d => d.deviceId === selectedDeviceId)?.label || "Default Mic";
                 statusText.innerHTML = `Recording via <b>${activeLabel}</b>`;
-
                 silentAudio.play().catch(e => console.log("Silent audio play failed", e));
                 visualizerCanvas.style.display = 'block';
                 drawVisualizer();
@@ -802,28 +793,20 @@
         }
 
         recordBtn.addEventListener('click', () => {
-            if (!isRecording) {
-                startRecording();
-            } else {
-                stopRecording();
-            }
+            if (!isRecording) startRecording();
+            else stopRecording();
         });
 
-        // --- Visualizer Logic ---
         function drawVisualizer() {
             if (!isRecording) return;
             animationId = requestAnimationFrame(drawVisualizer);
-
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             analyser.getByteFrequencyData(dataArray);
-
             canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-
             const barWidth = (visualizerCanvas.width / bufferLength) - 2;
             let barHeight;
             let x = 0;
-
             for (let i = 0; i < bufferLength; i++) {
                 barHeight = dataArray[i] / 2;
                 canvasCtx.fillStyle = `rgba(255, 59, 48, ${barHeight / 150 + 0.5})`;
@@ -831,8 +814,6 @@
                 x += barWidth + 2;
             }
         }
-
-        // --- Utils, Upload, Notes (Legacy/Original Logic) ---
 
         function generateUniqueFilename(prefix, extension) {
             const now = new Date();
@@ -845,14 +826,8 @@
             return `${prefix}_${yyyy}${mm}${dd}_${hh}${min}${ss}.${extension}`;
         }
 
-        function isMobile() {
-            return window.innerWidth <= 768;
-        }
-
         window.retryUpload = function () {
-            if (currentAudioBlob) {
-                uploadAudio(currentAudioBlob);
-            }
+            if (currentAudioBlob) uploadAudio(currentAudioBlob);
         };
 
         window.downloadLocally = function () {
@@ -880,14 +855,13 @@
             reader.onloadend = async function () {
                 const base64String = reader.result.split(',')[1];
                 const filename = generateUniqueFilename("Audio", "mp3");
-                const myKey = localStorage.getItem("nostr_pubkey");
                 try {
                     const response = await fetch(SCRIPT_URL, {
                         method: 'POST',
                         redirect: "follow",
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({
-                            secret: myKey,
+                            secret: localStorage.getItem("nostr_pubkey"),
                             filename: filename,
                             fileData: base64String,
                             mimeType: audioBlob.type,
@@ -917,14 +891,13 @@
             saveNoteBtn.disabled = true;
             const filename = generateUniqueFilename("Note", "txt");
             const base64Data = btoa(unescape(encodeURIComponent(text)));
-            const myKey = localStorage.getItem("nostr_pubkey");
             try {
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
                     redirect: "follow",
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({
-                        secret: myKey,
+                        secret: localStorage.getItem("nostr_pubkey"),
                         filename: filename,
                         fileData: base64Data,
                         mimeType: "text/plain",
@@ -953,8 +926,360 @@
         }
         saveNoteBtn.addEventListener('click', saveNote);
 
+
+        // =============== FEED LOGIC ===============
+        window.postsById = {};
+        window.feedLoaded = false;
+        window.processedEventIds = new Set();
+        let pool = null;
+
+        const BOT_NPUB = 'npub1892qylqredhs7p4nwa3ka6aljmgdhv7q2j5xan3ce2s66csysl0q69g6zj';
+        const RELAYS = ['wss://relay.damus.io', 'wss://relay.primal.net', 'wss://nos.lol'];
+
+        async function getFeedFiles() {
+            return [
+                'feed/AI_Curator_feed.json',
+                'feed/News_Bot_feed.json',
+                'feed/NAND_Bot_feed.json',
+                'feed/MySky_Bot_feed.json'
+            ];
+        }
+
+        function getNpubHex(npub) {
+            try {
+                if (!window.NostrTools) return null;
+                const { type, data } = window.NostrTools.nip19.decode(npub);
+                return data;
+            } catch (e) {
+                console.error("Error decoding NPUB:", e);
+                return null;
+            }
+        }
+
+        async function fetchInsights() {
+            if (!userPubkey) return;
+            if (!window.NostrTools) {
+                console.warn("NostrTools not loaded yet. Retrying in 100ms...");
+                setTimeout(fetchInsights, 100);
+                return;
+            }
+            if (!pool) pool = new window.NostrTools.SimplePool();
+
+            const botHex = getNpubHex(BOT_NPUB);
+            if (!botHex) return;
+
+            let userHex = userPubkey;
+            if (userPubkey.startsWith('npub')) userHex = getNpubHex(userPubkey);
+
+            console.log("🤖 Fetching Insights...");
+            console.log("   > Bot (Author):", botHex);
+            console.log("   > User (Target):", userHex);
+
+            const filter = { authors: [botHex], kinds: [10001], '#p': [userHex], limit: 50 };
+            console.log("   > Filter:", JSON.stringify(filter));
+
+            try {
+                let events = [];
+                // COMPATIBILITY FIX: Check API Version
+                if (typeof pool.list === 'function') {
+                    console.log("Using pool.list() (Newer API)");
+                    // pool.list expects array of filters
+                    events = await pool.list(RELAYS, [filter]);
+
+                } else if (typeof pool.subscribeMany === 'function') {
+                    console.log("Using pool.subscribeMany() (v2 Standard)");
+
+                    events = await new Promise((resolve) => {
+                        const collected = [];
+                        let sub;
+                        let resolved = false;
+
+                        const finish = () => {
+                            if (resolved) return;
+                            resolved = true;
+                            if (sub && sub.close) sub.close();
+                            resolve(collected);
+                        };
+
+                        const onevent = (event) => collected.push(event);
+                        const oneose = () => {
+                            console.log("✅ EOSE received.");
+                            // finish(); // Optional: finish early on EOSE
+                        };
+
+                        try {
+                            // CORRECTED: Pass 'filter' (object), not '[filter]' (array) based on user report being working code
+                            sub = pool.subscribeMany(RELAYS, filter, { onevent, oneose });
+                        } catch (e) {
+                            console.error("subscribeMany failed:", e);
+                            resolve([]); // Resolve empty on error
+                        }
+
+                        setTimeout(() => {
+                            if (!resolved) {
+                                console.log("⏳ Timeout reached (subscribeMany).");
+                                finish();
+                            }
+                        }, 3500);
+                    });
+
+                } else {
+                    // Legacy pool.sub
+                    events = await new Promise((resolve) => {
+                        const sub = pool.sub(RELAYS, [filter]);
+                        const collected = [];
+                        sub.on('event', (e) => collected.push(e));
+                        sub.on('eose', () => resolve(collected));
+                        setTimeout(() => resolve(collected), 3500);
+                    });
+                }
+
+                console.log(`✨ Found ${events.length} insights.`);
+                events.sort((a, b) => b.created_at - a.created_at);
+                for (const ev of events) {
+                    await processInsightEvent(ev, botHex);
+                }
+            } catch (e) {
+                console.error("Error fetching insights:", e);
+            }
+        }
+
+        async function processInsightEvent(event, botHex) {
+            try {
+                if (window.processedEventIds.has(event.id)) return;
+                window.processedEventIds.add(event.id);
+                if (!window.nostr) return;
+
+                let decrypted;
+                try {
+                    // Try NIP-44 first
+                    decrypted = await window.nostr.nip44.decrypt(botHex, event.content);
+                } catch (e44) {
+                    console.warn("NIP-44 Decryption failed, trying NIP-04...", e44);
+                    try {
+                        // Fallback to NIP-04
+                        decrypted = await window.nostr.nip04.decrypt(botHex, event.content);
+                    } catch (e04) {
+                        console.error("All decryption methods failed for event:", event.id, e04);
+                        return; // Skip this event
+                    }
+                }
+
+                let rawData;
+                try { rawData = JSON.parse(decrypted); } catch (e) { rawData = { content: decrypted, title: "Private Insight" }; }
+
+                const items = Array.isArray(rawData) ? rawData : [rawData];
+                for (let i = 0; i < items.length; i++) {
+                    const postData = items[i];
+                    const uniqueId = postData.id || `${event.id}_${i}`;
+                    const feedPost = {
+                        id: uniqueId,
+                        title: postData.title || "🤖 AI Insight",
+                        content: postData.content || "",
+                        tags: postData.tags || ["insight", "ai"],
+                        feedName: "AI_Curator",
+                        author: { name: "Personal AI", handle: "ai_bot", avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${BOT_NPUB}` },
+                        timestamp: postData.id || (event.created_at * 1000),
+                        isInsight: true
+                    };
+                    window.postsById[feedPost.id] = feedPost;
+                    renderSinglePost(feedPost, true);
+                }
+            } catch (e) {
+                console.warn("Error processing insight event:", e);
+            }
+        }
+
+        async function loadFeed() {
+            if (window.location.protocol === 'file:') {
+                document.getElementById('feed-container').innerHTML = `<div class="p-4 text-center text-red-400 border border-red-500 rounded m-4">⚠️ Local File Access Error</div>`;
+                return;
+            }
+            try {
+                const feedFiles = await getFeedFiles();
+                const feedPromises = feedFiles.map(async (file) => {
+                    const response = await fetch(file);
+                    if (!response.ok) throw new Error(`Failed to load ${file}`);
+                    const data = await response.json();
+                    const filename = file.split('/').pop();
+                    const namePart = filename.replace('_feed.json', '');
+                    const authorName = namePart.replace(/_/g, ' ');
+                    let hash = 0;
+                    for (let i = 0; i < authorName.length; i++) hash = authorName.charCodeAt(i) + ((hash << 5) - hash);
+                    const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${Math.abs(hash)}`;
+                    return data.map(post => ({
+                        ...post,
+                        feedName: namePart,
+                        author: { name: authorName, avatar: avatarUrl, handle: "" },
+                        timestamp: post.id
+                    }));
+                });
+                const results = await Promise.all(feedPromises);
+                const allPosts = results.flat();
+                allPosts.sort((a, b) => b.id.localeCompare(a.id));
+                window.postsById = {};
+                allPosts.forEach(post => window.postsById[post.id] = post);
+                renderPosts(allPosts);
+                if (window.nostr && userPubkey) fetchInsights();
+            } catch (err) {
+                console.error("Error loading feeds:", err);
+                document.getElementById('feed-container').innerHTML = `<div class="p-4 text-center text-red-400">Error loading feed</div>`;
+            }
+        }
+
+        function renderPosts(posts) {
+            const container = document.getElementById('feed-container');
+            container.innerHTML = '';
+            const hiddenPosts = JSON.parse(localStorage.getItem('hiddenPosts') || '[]');
+            const visiblePosts = posts.filter(post => !hiddenPosts.includes(post.id));
+            visiblePosts.forEach(post => renderSinglePost(post, false));
+        }
+
+        function renderSinglePost(post, prepend = false) {
+            const container = document.getElementById('feed-container');
+            const existing = document.getElementById(`post-${post.id}`);
+            if (existing) return;
+
+            let timeStr = "";
+            if (typeof post.timestamp === 'number') {
+                timeStr = new Date(post.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else {
+                const year = post.id.substring(0, 4);
+                const month = post.id.substring(4, 6);
+                const day = post.id.substring(6, 8);
+                const hour = post.id.substring(8, 10);
+                const minute = post.id.substring(10, 12);
+                const dateObj = new Date(`${year}-${month}-${day}T${hour}:${minute}:00`);
+                timeStr = isNaN(dateObj) ? "" : dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            const bgClass = post.isInsight ? "bg-indigo-900/30 border-indigo-500/50" : "border-slate-800 hover:bg-slate-800/50";
+            const icon = post.isInsight ? "✨" : "";
+
+            const html = `
+                <div id="post-${post.id}" class="border-b ${bgClass} p-4 transition duration-200">
+                    <div class="flex gap-3">
+                        <img src="${post.author.avatar}" class="w-12 h-12 rounded-full bg-slate-700 object-cover flex-shrink-0">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-baseline justify-between">
+                                <div class="flex items-center gap-1 overflow-hidden">
+                                    <span class="font-bold text-white truncate">${icon} ${post.author.name}</span>
+                                    <span class="text-slate-500 text-sm truncate">${post.author.handle}</span>
+                                    <span class="text-slate-500 text-sm">· ${timeStr}</span>
+                                </div>
+                            </div>
+                            ${post.title ? `<h3 id="title-${post.id}" class="mt-1 font-bold text-base text-white">${post.title}</h3>` : ''}
+                            <div id="content-${post.id}" class="mt-1 text-[15px] leading-normal text-slate-100 whitespace-pre-wrap outline-none focus:ring-1 focus:ring-blue-500/50 rounded px-1 -ml-1 transition" contenteditable="true">
+                                ${linkify(post.content.trim())}
+                                ${post.tags && post.tags.length > 0 ? `<div class="mt-2 text-blue-400 font-medium text-sm">${post.tags.map(t => `#${t}`).join(' ')}</div>` : ''}
+                            </div>
+                            <div class="mt-3 flex items-center justify-center gap-20 text-slate-500">
+                                <button onclick="handleInteraction('like', '${post.id}')" class="group flex items-center gap-1.5 hover:text-pink-500 tap-highlight-transparent">
+                                    <svg class="w-5 h-5 group-hover:bg-pink-500/10 rounded-full p-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                                </button>
+                                <button onclick="handleInteraction('reply', '${post.id}')" class="group flex items-center gap-1.5 hover:text-blue-400 tap-highlight-transparent">
+                                    <svg class="w-5 h-5 group-hover:bg-blue-500/10 rounded-full p-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
+            if (prepend) container.insertAdjacentHTML('afterbegin', html);
+            else container.insertAdjacentHTML('beforeend', html);
+        }
+
+        async function handleInteraction(type, postId) {
+            const secret = localStorage.getItem("nostr_pubkey");
+            if (!secret) {
+                alert("🔒 Please login with Nostr first!");
+                return;
+            }
+            const post = window.postsById[postId];
+            if (!post) {
+                console.error("Error: Post not found in memory.");
+                return;
+            }
+
+            let commentText = "";
+            let postContent = "";
+            if (type === 'reply') {
+                commentText = prompt("Write your reply:");
+                if (commentText === null) return;
+            } else {
+                const contentEl = document.getElementById(`content-${postId}`);
+                postContent = contentEl ? contentEl.innerText : post.content;
+            }
+
+            const payload = {
+                secret: secret,
+                type: type,
+                postId: postId,
+                comment: commentText,
+                postContent: postContent,
+                postTitle: post.title || "",
+                feedName: post.feedName || "",
+                tags: post.tags || []
+            };
+
+            const postElement = document.getElementById(`post-${postId}`);
+            if (postElement) postElement.style.display = 'none';
+
+            const hiddenPosts = JSON.parse(localStorage.getItem('hiddenPosts') || '[]');
+            if (!hiddenPosts.includes(postId)) {
+                hiddenPosts.push(postId);
+                localStorage.setItem('hiddenPosts', JSON.stringify(hiddenPosts));
+            }
+
+            try {
+                await fetch(FEED_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                console.log("✅ Request sent");
+            } catch (error) {
+                console.error("Error sending data:", error);
+            }
+        }
+
+        function linkify(text) {
+            return text
+                .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" onclick="event.stopPropagation()">$1</a>')
+                .replace(/#(\w+)/g, '<span class="text-blue-400 font-medium">#$1</span>');
+        }
+
     </script>
-    <script src="https://unpkg.com/nostr-login@latest/dist/unpkg.js" defer></script>
+    <!-- Load Nostr Login Dynamically only if no extension is present -->
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (window.nostr) {
+                    console.log("✅ Nostr Extension detected. Skipping nostr-login shim.");
+                    // Optional: Setup 'login' button to just call getPublicKey if extension exists
+                    const btn = document.getElementById('nostrLoginBtn');
+                    if (btn) {
+                        btn.addEventListener('click', async () => {
+                            try {
+                                const pub = await window.nostr.getPublicKey();
+                                localStorage.setItem('nostr_pubkey', pub);
+                                userPubkey = pub;
+                                window.location.reload(); // Reload to update UI state cleanly
+                            } catch (e) {
+                                console.error("Extension login failed", e);
+                            }
+                        });
+                    }
+                } else {
+                    console.log("ℹ️ No extension found. Loading nostr-login...");
+                    const script = document.createElement('script');
+                    script.src = "https://unpkg.com/nostr-login@latest/dist/unpkg.js";
+                    document.body.appendChild(script);
+                }
+            }, 500); // Wait 500ms for extension injection
+        });
+    </script>
 </body>
 
 </html>
