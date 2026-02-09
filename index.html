@@ -592,6 +592,11 @@
         });
 
         nostrLoginBtn.addEventListener('click', () => {
+            if (!window.nostr || typeof window.nostr.getPublicKey !== 'function') {
+                console.warn("Nostr login not available yet.");
+                alert("Nostr login isn't ready yet. If you just opened the app, wait a moment or install a Nostr extension.");
+                return;
+            }
             window.nostr.getPublicKey().catch(e => console.log("Login deferred", e));
         });
 
