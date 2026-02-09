@@ -472,6 +472,9 @@
         <button onclick="switchTab('feed')" id="nav-feed" class="nav-link">
             <span>📱</span> <span>Feed</span>
         </button>
+        <button onclick="switchTab('youtube')" id="nav-youtube" class="nav-link">
+            <span>▶️</span> <span>YouTube</span>
+        </button>
         <button id="nostrLoginBtn" class="nav-link" style="background: #a855f7; color: white; margin-left: auto;">
             Login
         </button>
@@ -531,6 +534,13 @@
         </div>
     </div>
 
+    <!-- VIEW: YOUTUBE -->
+    <div id="youtube-view" class="view-section hidden" style="width: 100%;">
+        <div id="youtube-container" class="max-w-4xl mx-auto pb-20 px-4">
+            <div class="text-center mt-10 text-slate-500 animate-pulse">Loading YouTube feed...</div>
+        </div>
+    </div>
+
     <!-- SCRIPTS -->
     <script>
         // --- GLOBAL & APP STATE ---
@@ -542,24 +552,43 @@
         function switchTab(tab) {
             const recordView = document.getElementById('record-view');
             const feedView = document.getElementById('feed-view');
+            const youtubeView = document.getElementById('youtube-view');
             const navRecord = document.getElementById('nav-record');
             const navFeed = document.getElementById('nav-feed');
+            const navYouTube = document.getElementById('nav-youtube');
 
             if (tab === 'record') {
                 recordView.classList.remove('hidden');
                 feedView.classList.add('hidden');
+                youtubeView.classList.add('hidden');
                 navRecord.classList.add('active');
                 navFeed.classList.remove('active');
+                navYouTube.classList.remove('active');
             } else {
                 recordView.classList.add('hidden');
-                feedView.classList.remove('hidden');
                 navRecord.classList.remove('active');
-                navFeed.classList.add('active');
 
-                // Trigger Feed Load if needed
-                if (!window.feedLoaded) {
-                    loadFeed();
-                    window.feedLoaded = true;
+                if (tab === 'feed') {
+                    feedView.classList.remove('hidden');
+                    youtubeView.classList.add('hidden');
+                    navFeed.classList.add('active');
+                    navYouTube.classList.remove('active');
+
+                    // Trigger Feed Load if needed
+                    if (!window.feedLoaded) {
+                        loadFeed();
+                        window.feedLoaded = true;
+                    }
+                } else if (tab === 'youtube') {
+                    feedView.classList.add('hidden');
+                    youtubeView.classList.remove('hidden');
+                    navFeed.classList.remove('active');
+                    navYouTube.classList.add('active');
+
+                    if (!window.youtubeLoaded) {
+                        loadYouTubeFeed();
+                        window.youtubeLoaded = true;
+                    }
                 }
             }
         }
@@ -935,20 +964,14 @@
         // =============== FEED LOGIC ===============
         window.postsById = {};
         window.feedLoaded = false;
+        window.youtubeLoaded = false;
         window.processedEventIds = new Set();
         let pool = null;
 
         const BOT_NPUB = 'npub1892qylqredhs7p4nwa3ka6aljmgdhv7q2j5xan3ce2s66csysl0q69g6zj';
         const RELAYS = ['wss://relay.damus.io', 'wss://relay.primal.net', 'wss://nos.lol'];
 
-        async function getFeedFiles() {
-            return [
-                'feed/AI_Curator_feed.json',
-                'feed/News_Bot_feed.json',
-                'feed/NAND_Bot_feed.json',
-                'feed/MySky_Bot_feed.json'
-            ];
-        }
+
 
         function getNpubHex(npub) {
             try {
@@ -1096,51 +1119,56 @@
         }
 
         async function loadFeed() {
-            if (window.location.protocol === 'file:') {
-                document.getElementById('feed-container').innerHTML = `<div class="p-4 text-center text-red-400 border border-red-500 rounded m-4">⚠️ Local File Access Error</div>`;
+            const container = document.getElementById('feed-container');
+
+            // Show loading state
+            container.innerHTML = '<div class="text-center mt-10 text-slate-500 animate-pulse">Loading your feed...</div>';
+
+            if (!userPubkey) {
+                container.innerHTML = `<div class="flex flex-col items-center justify-center p-8 text-center">
+                    <div class="text-6xl mb-4">🔐</div>
+                    <h3 class="text-xl font-bold text-white mb-2">Login Required</h3>
+                    <p class="text-slate-400 mb-6 max-w-xs">Connect with Nostr to see your personalized AI insights and feed.</p>
+                    <button onclick="document.getElementById('nostrLoginBtn').click()" 
+                        class="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium rounded-xl transition-all shadow-lg hover:shadow-purple-500/25">
+                        Connect Nostr
+                    </button>
+                </div>`;
                 return;
             }
-            try {
-                const feedFiles = await getFeedFiles();
-                const feedPromises = feedFiles.map(async (file) => {
-                    const response = await fetch(file);
-                    if (!response.ok) throw new Error(`Failed to load ${file}`);
-                    const data = await response.json();
-                    const filename = file.split('/').pop();
-                    const namePart = filename.replace('_feed.json', '');
-                    const authorName = namePart.replace(/_/g, ' ');
-                    let hash = 0;
-                    for (let i = 0; i < authorName.length; i++) hash = authorName.charCodeAt(i) + ((hash << 5) - hash);
-                    const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${Math.abs(hash)}`;
-                    return data.map(post => ({
-                        ...post,
-                        feedName: namePart,
-                        author: { name: authorName, avatar: avatarUrl, handle: "" },
-                        timestamp: post.id
-                    }));
-                });
-                const results = await Promise.all(feedPromises);
-                const allPosts = results.flat();
-                allPosts.sort((a, b) => b.id.localeCompare(a.id));
-                window.postsById = {};
-                allPosts.forEach(post => window.postsById[post.id] = post);
-                renderPosts(allPosts);
-                if (window.nostr && userPubkey) fetchInsights();
-            } catch (err) {
-                console.error("Error loading feeds:", err);
-                document.getElementById('feed-container').innerHTML = `<div class="p-4 text-center text-red-400">Error loading feed</div>`;
-            }
-        }
 
-        function renderPosts(posts) {
-            const container = document.getElementById('feed-container');
-            container.innerHTML = '';
-            const hiddenPosts = JSON.parse(localStorage.getItem('hiddenPosts') || '[]');
-            const visiblePosts = posts.filter(post => !hiddenPosts.includes(post.id));
-            visiblePosts.forEach(post => renderSinglePost(post, false));
+            // Only fetch insights from Nostr
+            try {
+                if (window.nostr) {
+                    // Clear container to prepare for new results
+                    // Note: We might want to keep "Loading..." until first item arrives, 
+                    // but fetchInsights appends. Let's clear and show a spinner or valid empty state.
+                    container.innerHTML = '';
+
+                    await fetchInsights();
+
+                    if (container.children.length === 0) {
+                        container.innerHTML = `<div id="no-insights-msg" class="text-center mt-10 text-slate-500">
+                            <p>No insights found yet.</p>
+                            <button onclick="loadFeed()" class="mt-4 text-purple-400 hover:text-purple-300 text-sm">Retry</button>
+                         </div>`;
+                    }
+                } else {
+                    container.innerHTML = `<div class="p-4 text-center text-slate-400">Waiting for Nostr...</div>`;
+                    // Retry shortly if extensions are loading
+                    setTimeout(loadFeed, 1000);
+                }
+            } catch (err) {
+                console.error("Error loading feed:", err);
+                container.innerHTML = `<div class="p-4 text-center text-red-400">Error loading feed. <button onclick="loadFeed()" class="underline">Retry</button></div>`;
+            }
         }
 
         function renderSinglePost(post, prepend = false) {
+            // Remove empty state message if present
+            const emptyMsg = document.getElementById('no-insights-msg');
+            if (emptyMsg) emptyMsg.remove();
+
             const container = document.getElementById('feed-container');
             const existing = document.getElementById(`post-${post.id}`);
             if (existing) return;
@@ -1250,6 +1278,71 @@
             return text
                 .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" class="text-blue-400 hover:underline" target="_blank" onclick="event.stopPropagation()">$1</a>')
                 .replace(/#(\w+)/g, '<span class="text-blue-400 font-medium">#$1</span>');
+        }
+
+        // =============== YOUTUBE FEED LOGIC ===============
+        async function loadYouTubeFeed() {
+            const container = document.getElementById('youtube-container');
+            container.innerHTML = '<div class="text-center mt-10 text-slate-500 animate-pulse">Loading YouTube feed...</div>';
+
+            try {
+                const resp = await fetch(`./feed/youtube_feed.json?ts=${Date.now()}`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+
+                if (!data || !Array.isArray(data.results) || data.results.length === 0) {
+                    container.innerHTML = `<div class="text-center mt-10 text-slate-500">
+                        <p>No YouTube recommendations found yet.</p>
+                        <p class="text-sm mt-2 text-slate-600">Generate ` + "`feed/youtube_feed.json`" + ` first.</p>
+                    </div>`;
+                    return;
+                }
+
+                const header = `
+                    <div class="flex items-center justify-between mt-8 mb-4">
+                        <div>
+                            <h2 class="text-white text-2xl font-bold">YouTube Matches</h2>
+                            <p class="text-slate-400 text-sm">Based on your notes vectors</p>
+                        </div>
+                        <div class="text-slate-500 text-xs text-right">
+                            <div>Threshold: ${data.threshold ?? 'n/a'}</div>
+                            <div>${data.generatedAt ? new Date(data.generatedAt).toLocaleString() : ''}</div>
+                        </div>
+                    </div>
+                `;
+
+                const cards = data.results.map(renderYouTubeCard).join('');
+                container.innerHTML = header + `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${cards}</div>`;
+            } catch (err) {
+                console.error("Error loading YouTube feed:", err);
+                container.innerHTML = `<div class="p-4 text-center text-red-400">Error loading YouTube feed. <button onclick="loadYouTubeFeed()" class="underline">Retry</button></div>`;
+            }
+        }
+
+        function renderYouTubeCard(video) {
+            const title = video.title || "Untitled";
+            const channel = video.channelTitle || "Unknown channel";
+            const published = video.publishedAt ? new Date(video.publishedAt).toLocaleDateString() : "";
+            const score = typeof video.score === 'number' ? video.score.toFixed(2) : "";
+            const thumb = video.thumbnail || (video.thumbnails && (video.thumbnails.medium || video.thumbnails.default));
+            const thumbUrl = thumb && thumb.url ? thumb.url : "";
+            const watchUrl = video.watchUrl || (video.videoId ? `https://www.youtube.com/watch?v=${video.videoId}` : "#");
+
+            return `
+                <a href="${watchUrl}" target="_blank" class="block border border-slate-800 bg-slate-900/40 hover:bg-slate-900/70 rounded-xl overflow-hidden transition">
+                    <div class="w-full aspect-video bg-slate-800">
+                        ${thumbUrl ? `<img src="${thumbUrl}" class="w-full h-full object-cover" />` : ''}
+                    </div>
+                    <div class="p-4">
+                        <div class="text-white font-semibold leading-snug">${title}</div>
+                        <div class="text-slate-500 text-sm mt-1">${channel}</div>
+                        <div class="text-slate-600 text-xs mt-2 flex justify-between">
+                            <span>${published}</span>
+                            <span>${score ? `Score ${score}` : ''}</span>
+                        </div>
+                    </div>
+                </a>
+            `;
         }
 
     </script>

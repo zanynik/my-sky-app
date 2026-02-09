@@ -3,6 +3,7 @@
 A personal AI interface acting as a simplified "Second Brain" frontend. It serves two main purposes:
 1.  **Recording Interface (`index.html`)**: Quickly capture audio notes and thoughts.
 2.  **Smart Feed (`feed.html`)**: Consumes AI-generated content from both local files and private Nostr messages.
+3.  **YouTube Feed**: Local, vector-based recommendations generated from your notes.
 
 ## Features
 
@@ -20,6 +21,11 @@ A personal AI interface acting as a simplified "Second Brain" frontend. It serve
     - **Reply**: Sends a text reply/comment to your "Second Brain" (Google Drive).
 - **Authentication**: Uses NIP-07 (Nostr browser extension) to decrypt private AI insights and secure interactions.
 
+### ▶️ YouTube Feed
+- **Local Vectors**: Generates a TF‑IDF vector space from your notes directory.
+- **YouTube Search**: Uses those vectors to query YouTube and filter results by similarity.
+- **Local JSON Output**: Saves results to `feed/youtube_feed.json` for the UI.
+
 ## Architecture
 
 ```
@@ -29,8 +35,12 @@ A personal AI interface acting as a simplified "Second Brain" frontend. It serve
 ├── feed/                   # Local feed data directory
 │   ├── AI_Curator_feed.json
 │   └── *_feed.json
+│   ├── notes_vectors.json
+│   └── youtube_feed.json
 └── utilities/
     └── my_sky_app.gs       # Google Apps Script for backend handling
+    └── vectorize_notes.js  # Builds TF‑IDF vectors from notes
+    └── build_youtube_feed.js # Fetches YouTube videos based on vectors
 ```
 
 ## Setup
@@ -50,6 +60,12 @@ chmod +x start_server.sh
 ./start_server.sh
 ```
 Visit `http://localhost:8000/feed.html` to view the feed.
+
+### YouTube Feed Setup
+1. Generate vectors from your notes:
+   `node utilities/vectorize_notes.js --source "/path/to/notes"`
+2. Fetch YouTube recommendations (requires API key):
+   `YOUTUBE_API_KEY=... node utilities/build_youtube_feed.js`
 
 ### 3. Backend (Google Apps Script)
 To enable "Likes" and "Replies" saving to Google Drive:
