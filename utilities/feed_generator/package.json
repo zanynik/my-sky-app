@@ -1,0 +1,21 @@
+{
+  "name": "feed_generator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "generate:notes": "./scripts/feed_gen.sh",
+    "generate:youtube": "./scripts/youtube_feed_gen.sh",
+    "publish": "node ./scripts/publish_feed.js",
+    "test": "echo \"No tests configured\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "nostr-tools": "^2.22.1",
+    "websocket": "^1.0.35"
+  }
+}

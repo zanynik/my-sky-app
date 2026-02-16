@@ -1,0 +1,16 @@
+Analyze the following notes and extract Zettelkasten style insights by trying to keep the writing style similar to the notes. Return ONLY valid JSON in this exact format with no other text:
+
+[
+    {
+        "id": "YYYYMMDDHHMM",
+        "title": "Brief Title",
+        "tags": [
+            "dev",
+            "build",
+            "architecture"
+        ],
+        "content": "Insightful observation ranging between 150-300 words"
+    }
+]
+
+Here are the notes to process:

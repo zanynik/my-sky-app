@@ -1,0 +1,16 @@
+Use the following notes to come up with insightful and engaging tweets. Return ONLY valid JSON in this exact format with no other text:
+
+[
+    {
+        "id": "YYYYMMDDHHMM",
+        "title": "Brief Title",
+        "tags": [
+            "dev",
+            "build",
+            "architecture"
+        ],
+        "content": "Insightful tweet without hashtags here. Keep it under 280 characters."
+    }
+]
+
+Here are the notes to process:
